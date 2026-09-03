@@ -2,54 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  AlertTriangle,
-  Check,
-  Flame,
-  Octagon,
-  Sparkles,
-  User,
-  Users,
-  Building2,
-  Globe,
-  Footprints,
-  Apple,
-  Package,
-  Briefcase,
-  Film,
-  Tag,
-  Trophy,
-  Utensils,
-  Music,
-  HelpCircle,
-  ShieldAlert,
-  ArrowDown
-} from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { startsWithLetter } from '@/lib/gameLogic';
-import { soundManager } from '@/lib/audio';
+import { tactileAudio } from '@/lib/audio';
 import { SpectatorBanner } from './SpectatorBanner';
 import { SlotMachineReveal } from './SlotMachineReveal';
 import { CircularTimer } from './CircularTimer';
-
-function getCategoryIcon(iconName: string) {
-  switch (iconName) {
-    case 'User': return <User className="h-4 w-4" />;
-    case 'Users': return <Users className="h-4 w-4" />;
-    case 'Building2': return <Building2 className="h-4 w-4" />;
-    case 'Globe': return <Globe className="h-4 w-4" />;
-    case 'Footprints': return <Footprints className="h-4 w-4" />;
-    case 'Apple': return <Apple className="h-4 w-4" />;
-    case 'Package': return <Package className="h-4 w-4" />;
-    case 'Briefcase': return <Briefcase className="h-4 w-4" />;
-    case 'Film': return <Film className="h-4 w-4" />;
-    case 'Tag': return <Tag className="h-4 w-4" />;
-    case 'Trophy': return <Trophy className="h-4 w-4" />;
-    case 'Utensils': return <Utensils className="h-4 w-4" />;
-    case 'Music': return <Music className="h-4 w-4" />;
-    default: return <HelpCircle className="h-4 w-4" />;
-  }
-}
 
 export const GameArena: React.FC = () => {
   const {
@@ -63,6 +21,7 @@ export const GameArena: React.FC = () => {
   } = useGameStore();
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [activeBayIndex, setActiveBayIndex] = useState<number | null>(0);
   const [shockwave, setShockwave] = useState(false);
 
   const isSpectator = room?.players[playerId]?.isSpectator;
@@ -73,34 +32,34 @@ export const GameArena: React.FC = () => {
   const graceRemaining = room?.graceTimeRemaining;
   const stoppedBy = room?.stoppedBy;
 
-  // Auto-focus first input field when round begins
+  // Auto-focus first channel bay on start
   useEffect(() => {
     if (room?.status === 'PLAYING' && !isSpectator) {
       setTimeout(() => {
         inputRefs.current[0]?.focus();
-      }, 300);
+      }, 250);
     }
   }, [room?.status, isSpectator]);
 
-  // Clean local answers on countdown
+  // Reset local answers on countdown
   useEffect(() => {
     if (room?.status === 'COUNTDOWN') {
       clearLocalAnswers();
     }
   }, [room?.status, clearLocalAnswers]);
 
-  // Shockwave trigger when STOP is initiated
+  // Trigger tactile shockwave when STOP is smashed
   useEffect(() => {
     if (graceRemaining !== null) {
       setShockwave(true);
-      const t = setTimeout(() => setShockwave(false), 1200);
+      const t = setTimeout(() => setShockwave(false), 900);
       return () => clearTimeout(t);
     }
   }, [graceRemaining]);
 
   if (!room) return null;
 
-  // 3D Slot Machine Letter Reveal on COUNTDOWN
+  // 3D Split-Flap Letter Reel on COUNTDOWN
   if (room.status === 'COUNTDOWN') {
     return (
       <SlotMachineReveal
@@ -117,10 +76,15 @@ export const GameArena: React.FC = () => {
 
   const handleInputChange = (catId: string, val: string) => {
     if (isSpectator || (isStopping && graceRemaining === 0)) return;
+    tactileAudio.playKeyStroke();
     updateLocalAnswer(catId, val);
   };
 
-  // Auto-advance to next input field on Enter
+  const handleInputFocus = (index: number) => {
+    setActiveBayIndex(index);
+    tactileAudio.playFocusClick();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -134,90 +98,104 @@ export const GameArena: React.FC = () => {
     if (!allFieldsFilled) {
       setNotification({
         type: 'warning',
-        message: `STOP üçün bütün ${categories.length} xanaları doldurun! (${filledCount}/${categories.length})`,
+        message: `BÜTÜN KANALLARI DOLDURUN: (${filledCount}/${categories.length})`,
       });
       return;
     }
+    tactileAudio.playStopBuzzer();
     sendGameAction('stop');
   };
 
   const otherPlayers = Object.values(room.players).filter((p) => p.id !== playerId && !p.isSpectator);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 relative">
-      {/* Shockwave visual pulse when STOP is smashed */}
+    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 relative">
+      {/* Visual Shockwave Pulse on STOP smash */}
       {shockwave && (
-        <motion.div
-          initial={{ opacity: 0.8, scale: 0.8 }}
-          animate={{ opacity: 0, scale: 2 }}
-          transition={{ duration: 1, ease: 'easeOut' }}
-          className="pointer-events-none fixed inset-0 z-40 bg-rose-600/30 filter blur-3xl"
-        />
+        <div className="pointer-events-none fixed inset-0 z-40 bg-[#FF4800]/20 mix-blend-screen animate-pulse" />
       )}
 
       {isSpectator && <SpectatorBanner currentRound={room.currentRound} />}
 
-      {/* Top Arena Dashboard Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl border border-white/[0.08] bg-[#08080a]/90 p-6 sm:p-8 backdrop-blur-xl mb-8 relative overflow-hidden shadow-2xl"
-      >
-        <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -right-16 -bottom-16 h-48 w-48 rounded-full bg-violet-600/15 blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-          {/* Target Letter Card */}
+      {/* Top Deck: Machined Telemetry Header Bar */}
+      <div className="border border-white/[0.1] bg-[#0E1015] p-4 sm:p-5 mb-6 crosshair-corner">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          {/* Target Register Block */}
           <div className="flex items-center gap-5">
-            <div className="relative group">
-              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-400 opacity-60 blur group-hover:opacity-100 transition duration-500" />
-              <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-[#08080a] border border-emerald-400/40 shadow-2xl">
-                <span className="font-mono text-5xl sm:text-6xl font-black bg-gradient-to-b from-white via-slate-100 to-emerald-300 bg-clip-text text-transparent">
+            <div className="relative crosshair-corner border-2 border-white/[0.15] bg-[#12141A] p-2">
+              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center bg-[#090A0C] border border-black">
+                <span className="font-display font-extrabold text-5xl sm:text-6xl text-[#D4FF00] drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]">
                   {currentLetter}
                 </span>
               </div>
             </div>
+
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-0.5 text-xs font-semibold text-emerald-400 mb-1">
-                <span>Hədəf Hərf</span>
+              <div className="flex items-center gap-2 font-mono text-[10px] tracking-tracked text-zinc-500 mb-1">
+                <span className="inline-block h-1.5 w-1.5 bg-[#D4FF00]" />
+                <span>REGISTER_TARGET // ROUND 0{room.currentRound} OF 0{room.settings.totalRounds}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white">
-                &quot;{currentLetter}&quot; ilə sözləri yazın
+              <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-white uppercase">
+                &quot;{currentLetter}&quot; İLƏ KANALLARI DOLDURUN
               </h2>
-              <p className="text-xs text-slate-400">
-                Enter və ya Tab ilə növbəti xanaya sürətlə keçin
+              <p className="text-[11px] font-mono text-zinc-400">
+                ENTER / TAB İLƏ NÖVBƏTİ KANALA KEÇİN
               </p>
             </div>
           </div>
 
-          {/* Right: Circular Timer & Peer presence */}
-          <div className="flex items-center gap-6">
-            {/* Live Peer Presence Indicators */}
+          {/* Right: Live Opponent Telemetry & Cockpit Timer */}
+          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+            {/* Live Opponent Waveform & LED Progress Strips */}
             {otherPlayers.length > 0 && (
-              <div className="hidden md:flex items-center gap-2 border-r border-white/10 pr-6">
+              <div className="flex items-center gap-2 border border-white/[0.08] bg-[#090A0C] p-2">
+                <div className="text-[9px] font-mono tracking-tracked text-zinc-500 pr-2 border-r border-white/[0.08] hidden sm:block">
+                  RADAR_P2P
+                </div>
                 {otherPlayers.map((p) => {
                   const pAnswers = room.answers[p.id] || {};
                   const pFilled = Object.values(pAnswers).filter((v) => (v || '').trim().length > 0).length;
+                  const isDone = pFilled === categories.length && categories.length > 0;
+
                   return (
                     <div
                       key={p.id}
-                      className="flex flex-col items-center gap-1 rounded-xl border border-white/5 bg-white/[0.02] px-2.5 py-1.5"
-                      title={`${p.name}: ${pFilled}/${categories.length} doldurub`}
+                      className="flex items-center gap-2 border border-white/[0.06] bg-[#12141A] px-2.5 py-1"
+                      title={`${p.name}: ${pFilled}/${categories.length} dolu`}
                     >
-                      <span className="text-lg">{p.avatar}</span>
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            pFilled === categories.length
-                              ? 'bg-rose-500 animate-ping'
-                              : pFilled > 0
-                              ? 'bg-emerald-400'
-                              : 'bg-slate-600'
-                          }`}
-                        />
-                        <span className="font-mono text-[9px] font-bold text-slate-400">
-                          {pFilled}/{categories.length}
-                        </span>
+                      <span className="text-sm">{p.avatar}</span>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[11px] font-semibold text-zinc-300 max-w-[80px] truncate">
+                            {p.name}
+                          </span>
+                          <span className="font-mono text-[9px] text-[#D4FF00]">
+                            {16 + (p.name.length % 5)}ms
+                          </span>
+                        </div>
+
+                        {/* 7-Segment Hardware LED Meter */}
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          {categories.map((_, i) => (
+                            <div
+                              key={i}
+                              className={`h-1.5 w-2 ${
+                                i < pFilled
+                                  ? isDone
+                                    ? 'bg-[#FF4800] shadow-[0_0_4px_#FF4800]'
+                                    : 'bg-[#D4FF00]'
+                                  : 'bg-zinc-800'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Equalizer Waveform Animation */}
+                      <div className="flex items-end gap-0.5 h-4 ml-1">
+                        <span className={`w-0.5 bg-[#D4FF00] ${pFilled > 0 ? 'animate-bounce' : 'h-1'}`} style={{ height: pFilled > 0 ? '12px' : '3px' }} />
+                        <span className={`w-0.5 bg-[#D4FF00] ${pFilled > 0 ? 'animate-pulse' : 'h-1'}`} style={{ height: pFilled > 0 ? '16px' : '2px' }} />
+                        <span className={`w-0.5 bg-[#D4FF00] ${pFilled > 0 ? 'animate-bounce' : 'h-1'}`} style={{ height: pFilled > 0 ? '9px' : '4px' }} />
                       </div>
                     </div>
                   );
@@ -225,7 +203,7 @@ export const GameArena: React.FC = () => {
               </div>
             )}
 
-            {/* Circular Timer Ring */}
+            {/* Cockpit Chrono Timer */}
             <CircularTimer timeRemaining={timeRemaining} totalDuration={roundDuration} />
           </div>
         </div>
@@ -234,132 +212,175 @@ export const GameArena: React.FC = () => {
         <AnimatePresence>
           {isStopping && (
             <motion.div
-              initial={{ opacity: 0, height: 0, y: -10 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 rounded-2xl border-2 border-rose-500/80 bg-rose-950/80 p-4 text-center overflow-hidden"
+              className="mt-4 border-2 border-[#FF4800] bg-[#FF4800]/10 p-3 flex items-center justify-between"
             >
-              <div className="flex items-center justify-center gap-3">
-                <ShieldAlert className="h-6 w-6 text-rose-400 animate-bounce" />
-                <div>
-                  <h4 className="text-lg font-black text-white">
-                    🚨 {stoppedBy?.name} &quot;STOP / BİTDİ&quot; BASDI!
-                  </h4>
-                  <p className="text-xs text-rose-200 font-semibold">
-                    Son xanaları tamamlayın! Raund{' '}
-                    <span className="text-white font-bold underline text-sm">{graceRemaining} saniyə</span>{' '}
-                    sonra bağlanır!
-                  </p>
-                </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 bg-[#FF4800] animate-ping" />
+                <span className="font-mono font-black text-white text-sm sm:text-base tracking-wider uppercase">
+                  🚨 {stoppedBy?.name} STOP KƏSİNTİSİNİ AKTİVLƏŞDİRDİ!
+                </span>
+              </div>
+              <div className="font-mono text-xs sm:text-sm font-bold text-[#FF4800] bg-black px-3 py-1 border border-[#FF4800]">
+                MÖHLƏT: {graceRemaining} SANİYƏ
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
 
-      {/* Responsive Input Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      {/* Main Rack: Modular Synth Channel Strips Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
         {categories.map((cat, idx) => {
           const currentVal = localAnswers[cat.id] || '';
           const hasInput = currentVal.trim().length > 0;
           const isCorrectLetter = startsWithLetter(currentVal, currentLetter);
           const isInvalidStart = hasInput && !isCorrectLetter;
+          const isActiveBay = activeBayIndex === idx;
 
           return (
             <div
               key={cat.id}
-              className={`rounded-2xl border p-4 backdrop-blur-xl transition-all duration-200 ${
-                isInvalidStart
-                  ? 'border-rose-500/50 bg-rose-950/20'
+              onClick={() => inputRefs.current[idx]?.focus()}
+              className={`group relative bg-[#12141A] border p-4 transition-all duration-100 cursor-text ${
+                isActiveBay
+                  ? 'border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.15)] bg-[#151821]'
+                  : isInvalidStart
+                  ? 'border-[#FF4800]/60 bg-[#161214]'
                   : isCorrectLetter
-                  ? 'border-emerald-500/50 bg-emerald-950/20'
-                  : 'border-white/[0.08] bg-[#0e0e12]/70 hover:border-white/20'
+                  ? 'border-[#D4FF00]/40 bg-[#121614]'
+                  : 'border-white/[0.08] hover:border-white/[0.18]'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.04] text-slate-300">
-                    {getCategoryIcon(cat.iconName)}
-                  </span>
-                  <span>{cat.azLabel}</span>
-                  {cat.isCustom && (
-                    <span className="rounded bg-violet-500/20 px-1 py-0.5 text-[9px] font-bold text-violet-300">
-                      Xüsusi
-                    </span>
-                  )}
-                </label>
+              {/* Corner Bracket Highlights for Active Bay */}
+              {isActiveBay && (
+                <>
+                  <span className="absolute top-0 left-0 font-mono text-[9px] text-[#D4FF00] leading-none select-none p-1">┌</span>
+                  <span className="absolute top-0 right-0 font-mono text-[9px] text-[#D4FF00] leading-none select-none p-1">┐</span>
+                  <span className="absolute bottom-0 left-0 font-mono text-[9px] text-[#D4FF00] leading-none select-none p-1">└</span>
+                  <span className="absolute bottom-0 right-0 font-mono text-[9px] text-[#D4FF00] leading-none select-none p-1">┘</span>
+                </>
+              )}
 
-                {/* Status indicator badge */}
-                <div>
-                  {isInvalidStart ? (
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-rose-400">
-                      <AlertTriangle className="h-3 w-3" />
-                      &quot;{currentLetter}&quot; ilə başlamalıdır!
+              {/* Bay Top Header Strip */}
+              <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-3">
+                <div className="flex items-center gap-2 font-mono text-[10px] tracking-tracked text-zinc-400">
+                  <span className="text-white font-bold">BAY_0{idx + 1}</span>
+                  <span>//</span>
+                  <span className="text-zinc-300 font-semibold">{cat.azLabel.toUpperCase()}</span>
+                  {cat.isCustom && (
+                    <span className="bg-[#FF4800]/20 text-[#FF4800] px-1 text-[8px] font-mono font-bold">
+                      CUSTOM
                     </span>
-                  ) : isCorrectLetter ? (
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-                      <Check className="h-3.5 w-3.5" />
-                      Doğru
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-slate-600">Boşdur</span>
                   )}
+                </div>
+
+                <div className="flex items-center gap-2 font-mono text-[10px]">
+                  <span className="text-zinc-500 tabular-nums">
+                    LEN: {currentVal.length < 10 ? `0${currentVal.length}` : currentVal.length}
+                  </span>
+
+                  {/* Tri-State LED Compliance Status */}
+                  <div className="flex items-center gap-1 pl-1">
+                    <span
+                      className={`h-2 w-2 ${
+                        isInvalidStart
+                          ? 'bg-[#FF4800] shadow-[0_0_8px_#FF4800]'
+                          : isCorrectLetter
+                          ? 'bg-[#D4FF00] shadow-[0_0_8px_#D4FF00]'
+                          : 'bg-zinc-700'
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Text Input with Enter auto-advance */}
-              <input
-                ref={(el) => {
-                  inputRefs.current[idx] = el;
-                }}
-                type="text"
-                disabled={isSpectator || (isStopping && graceRemaining === 0)}
-                placeholder={`"${currentLetter}" ilə başlayan ${cat.azLabel.toLowerCase()}...`}
-                value={currentVal}
-                onFocus={() => soundManager.playFocusClick()}
-                onChange={(e) => handleInputChange(cat.id, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, idx)}
-                className={`w-full rounded-xl border bg-[#08080a] px-4 py-3 text-base font-medium text-white placeholder-slate-700 focus:outline-none transition ${
-                  isInvalidStart
-                    ? 'border-rose-500 focus:border-rose-400'
+              {/* High-Contrast Large Monospaced Input */}
+              <div className="relative flex items-center">
+                <input
+                  ref={(el) => {
+                    inputRefs.current[idx] = el;
+                  }}
+                  type="text"
+                  disabled={isSpectator || (isStopping && graceRemaining === 0)}
+                  placeholder={`"${currentLetter}" İLƏ...`}
+                  value={currentVal}
+                  onFocus={() => handleInputFocus(idx)}
+                  onChange={(e) => handleInputChange(cat.id, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, idx)}
+                  className="w-full bg-transparent font-mono text-xl sm:text-2xl font-bold text-white placeholder-zinc-700 focus:outline-none tracking-tight selection:bg-[#FF4800] selection:text-black"
+                />
+              </div>
+
+              {/* Bottom Hairline Status Signal */}
+              <div className="mt-3 flex items-center justify-between text-[9px] font-mono pt-1.5 border-t border-white/[0.04]">
+                <span className="text-zinc-500">
+                  REQ: CHAR_01 == &apos;{currentLetter}&apos;
+                </span>
+                <span
+                  className={`font-semibold ${
+                    isInvalidStart
+                      ? 'text-[#FF4800]'
+                      : isCorrectLetter
+                      ? 'text-[#D4FF00]'
+                      : 'text-zinc-600'
+                  }`}
+                >
+                  {isInvalidStart
+                    ? 'ERR // NON_COMPLIANT'
                     : isCorrectLetter
-                    ? 'border-emerald-500/70 focus:border-emerald-400'
-                    : 'border-white/10 focus:border-emerald-500'
-                }`}
-              />
+                    ? 'ACK // VALID_SIGNAL'
+                    : 'AWAITING_INPUT'}
+                </span>
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* High-Voltage Sticky STOP Button */}
+      {/* Industrial Emergency Cutoff "STOP" Station */}
       {!isSpectator && (
         <div className="sticky bottom-6 z-30 flex flex-col items-center">
-          <motion.button
-            whileTap={{ scale: allFieldsFilled && !isStopping ? 0.95 : 1 }}
-            onClick={handleStopButton}
-            disabled={!allFieldsFilled || isStopping}
-            className={`w-full max-w-md rounded-2xl py-4 px-8 text-center font-black tracking-wider text-white shadow-2xl transition flex items-center justify-center gap-3 ${
-              allFieldsFilled && !isStopping
-                ? 'bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 shadow-rose-600/40 hover:brightness-110 cursor-pointer animate-pulse ring-4 ring-rose-500/30'
-                : 'bg-white/[0.05] text-slate-500 border border-white/10 cursor-not-allowed'
-            }`}
-          >
-            <Octagon className="h-6 w-6 fill-white/20" />
-            <span className="text-xl sm:text-2xl font-black uppercase">
-              {isStopping ? 'STOP BASILDI!' : 'STOP / BİTDİ!'}
-            </span>
-          </motion.button>
+          {/* Warning-Striped Outer Safety Chassis */}
+          <div className="w-full max-w-lg p-2 bg-[#090A0C] border-2 border-black shadow-2xl hazard-stripes">
+            <div className="bg-[#0E1015] p-2 border border-white/[0.1] flex flex-col items-center">
+              <div className="w-full flex items-center justify-between px-2 mb-2 font-mono text-[9px] tracking-tracked text-zinc-400">
+                <span>CUTOFF_INTERLOCK // SYS_07</span>
+                <span className={allFieldsFilled && !isStopping ? 'text-[#D4FF00] font-bold' : 'text-zinc-600'}>
+                  {allFieldsFilled ? 'SAFETY_RELEASED' : 'INTERLOCK_LOCKED'}
+                </span>
+              </div>
 
-          <p className="mt-2 text-xs text-slate-400 text-center">
-            {allFieldsFilled ? (
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <Flame className="h-3.5 w-3.5" /> Bütün xanalar doludur! STOP düyməsini basın.
-              </span>
-            ) : (
-              <span>STOP basmaq üçün bütün xanaları doldurun ({filledCount}/{categories.length})</span>
-            )}
-          </p>
+              {/* Physical Push-Down Mechanical Switch */}
+              <button
+                type="button"
+                onClick={handleStopButton}
+                disabled={!allFieldsFilled || isStopping}
+                className={`w-full py-4 px-6 font-mono font-black tracking-tracked text-center transition-all cursor-pointer select-none flex items-center justify-center gap-3 ${
+                  allFieldsFilled && !isStopping
+                    ? 'stop-cutoff-armed animate-pulse text-black text-xl sm:text-2xl uppercase'
+                    : 'bg-[#181B22] text-zinc-600 border border-white/[0.06] cursor-not-allowed text-sm'
+                }`}
+              >
+                <span className="inline-block h-3 w-3 bg-black/40" />
+                <span>
+                  {isStopping
+                    ? 'CUTOFF_EXECUTED // IN_GRACE'
+                    : allFieldsFilled
+                    ? 'EMERGENCY STOP // EXECUTE'
+                    : `CUTOFF_STANDBY // FILL ALL (${filledCount}/${categories.length})`}
+                </span>
+                <span className="inline-block h-3 w-3 bg-black/40" />
+              </button>
+
+              <div className="w-full flex items-center justify-between px-2 mt-1.5 font-mono text-[8px] tracking-widest text-zinc-500">
+                <span>SW_TYPE: SPRING_SOLENOID</span>
+                <span>VOLTAGE: 24V_DC</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

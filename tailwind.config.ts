@@ -10,60 +10,72 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        brand: {
-          50: "#f0fdf4",
-          100: "#dcfce7",
-          200: "#bbf7d0",
-          300: "#86efac",
-          400: "#4ade80",
-          500: "#22c55e",
-          600: "#16a34a",
-          700: "#15803d",
-          800: "#166534",
-          900: "#14532d",
+        basalt: {
+          950: "#060708",
+          900: "#090A0C", // Root canvas
+          850: "#0D0F13",
+          800: "#12141A", // Channel strips & bays
+          750: "#161922", // Elevated panels
+          700: "#1E222D", // Borders & frames
+          600: "#2B313F",
+          500: "#454D5F",
         },
-        accent: {
-          cyan: "#06b6d4",
-          indigo: "#6366f1",
-          purple: "#a855f7",
-          amber: "#f59e0b",
-          rose: "#f43f5e",
+        signal: {
+          orange: "#FF4800", // International Safety Orange
+          "orange-hover": "#FF5E1E",
+          lime: "#D4FF00",   // Laser Kinetic Lime
+          "lime-hover": "#DCFF33",
+          amber: "#FFB800",
+          cyan: "#00F0FF",
+        },
+        industrial: {
+          muted: "#717684",
+          light: "#E1E4EA",
+          wire: "rgba(255, 255, 255, 0.08)",
+          "wire-bold": "rgba(255, 255, 255, 0.16)",
         }
+      },
+      fontFamily: {
+        display: ["var(--font-syne)", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+      },
+      letterSpacing: {
+        tighter: "-0.04em",
+        tight: "-0.02em",
+        tracked: "0.2em",
+        "ultra-tracked": "0.3em",
+      },
+      boxShadow: {
+        "hard-sm": "2px 2px 0px rgba(0, 0, 0, 0.8)",
+        "hard-md": "4px 4px 0px rgba(0, 0, 0, 0.9)",
+        "hard-orange": "0px 8px 0px #992B00, 0px 14px 28px rgba(255, 72, 0, 0.35)",
+        "hard-lime": "0px 6px 0px #7EA800, 0px 12px 24px rgba(212, 255, 0, 0.35)",
+        "recessed": "inset 0px 2px 4px rgba(0, 0, 0, 0.6)",
       },
       animation: {
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "bounce-slight": "bounceSlight 1.5s infinite",
-        "scale-up": "scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-        "shake": "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
-        "glow": "glow 2s ease-in-out infinite alternate",
+        "scan-line": "scanline 2s linear infinite",
+        "flap-flip": "flapFlip 0.15s ease-in-out",
+        "pulse-subtle": "pulseSubtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
-        bounceSlight: {
-          "0%, 100%": { transform: "translateY(-4%)" },
-          "50%": { transform: "translateY(0)" },
+        scanline: {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(1000%)" },
         },
-        scaleUp: {
-          "0%": { transform: "scale(0.85)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
+        flapFlip: {
+          "0%": { transform: "rotateX(0deg)" },
+          "50%": { transform: "rotateX(-90deg)" },
+          "100%": { transform: "rotateX(0deg)" },
         },
-        shake: {
-          "10%, 90%": { transform: "translate3d(-1px, 0, 0)" },
-          "20%, 80%": { transform: "translate3d(2px, 0, 0)" },
-          "30%, 50%, 70%": { transform: "translate3d(-4px, 0, 0)" },
-          "40%, 60%": { transform: "translate3d(4px, 0, 0)" },
-        },
-        glow: {
-          "0%": { boxShadow: "0 0 15px rgba(34, 197, 94, 0.4)" },
-          "100%": { boxShadow: "0 0 30px rgba(34, 197, 94, 0.8), 0 0 50px rgba(168, 85, 247, 0.4)" },
+        pulseSubtle: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.4" },
         }
       },
-      backdropBlur: {
-        xs: "2px",
-      }
     },
   },
   plugins: [],
 };
+
 export default config;

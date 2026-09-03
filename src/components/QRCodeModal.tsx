@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, QrCode } from 'lucide-react';
+import { tactileAudio } from '@/lib/audio';
 
 interface QRCodeModalProps {
   isOpen: boolean;
@@ -17,14 +18,16 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, roomC
       ? `${window.location.origin}/room/${roomCode}`
       : `https://ad-soyad-game.vercel.app/room/${roomCode}`;
 
+  // Laser Kinetic Lime foreground on Basalt background
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
     roomUrl
-  )}&bgcolor=08080a&color=10b981&margin=10`;
+  )}&bgcolor=090a0c&color=d4ff00&margin=12`;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(roomUrl);
       setCopied(true);
+      tactileAudio.playKeyStroke();
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback
@@ -34,63 +37,70 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, roomC
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-mono">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            className="absolute inset-0 bg-black/85 backdrop-blur-sm"
           />
 
           {/* Modal Content */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-[#0e0e14] p-6 shadow-2xl"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="relative w-full max-w-sm border border-white/[0.12] bg-[#0E1015] p-6 shadow-2xl crosshair-corner"
           >
             {/* Close Button */}
             <button
-              onClick={onClose}
-              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white transition"
+              onClick={() => {
+                tactileAudio.playKeyStroke();
+                onClose();
+              }}
+              className="absolute right-3 top-3 p-1 text-zinc-400 hover:text-white transition cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 mb-3 border border-emerald-500/20">
-                <QrCode className="h-5 w-5" />
+              <div className="flex items-center gap-2 text-[10px] tracking-tracked text-[#D4FF00] mb-2 uppercase">
+                <QrCode className="h-3.5 w-3.5" />
+                <span>OPTICAL_HOOK // MOBILE_SCAN</span>
               </div>
-              <h3 className="text-lg font-black text-white">Telefondan Qoşulun</h3>
-              <p className="mt-1 text-xs text-slate-400">
-                Kameranı QR koda tutaraq otağa bir toxunuşla daxil olun.
+
+              <h3 className="text-lg font-black font-display text-white uppercase">
+                TELEFON KAMERASINI TUTUN
+              </h3>
+              <p className="mt-1 text-xs text-zinc-400">
+                Mobil cihazdan dərhal eyni frekansa qoşulun.
               </p>
 
               {/* QR Image Box */}
-              <div className="my-5 rounded-2xl border border-emerald-500/30 bg-[#08080a] p-3 shadow-inner">
+              <div className="my-4 border border-white/[0.1] bg-[#090A0C] p-3 shadow-inner">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrApiUrl}
                   alt={`QR code for room ${roomCode}`}
-                  className="h-48 w-48 rounded-xl"
+                  className="h-44 w-44"
                 />
               </div>
 
               {/* Room Code Badge & Copy */}
-              <div className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-2.5">
+              <div className="w-full flex items-center justify-between border border-white/[0.1] bg-[#12141A] p-2">
                 <div className="text-left px-2">
-                  <span className="text-[10px] uppercase font-bold text-slate-500">Otaq Kodu</span>
-                  <p className="font-mono text-base font-black text-emerald-400">{roomCode}</p>
+                  <span className="text-[9px] uppercase tracking-tracked text-zinc-500">ROOM_FREQ</span>
+                  <p className="font-mono text-base font-black text-[#D4FF00]">{roomCode}</p>
                 </div>
                 <button
                   onClick={handleCopy}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition"
+                  className="flex items-center gap-1.5 bg-[#D4FF00] text-black px-3 py-1.5 text-xs font-bold uppercase tracking-tracked hardware-key cursor-pointer"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  <span>{copied ? 'Kopyalandı' : 'Linki Kopyala'}</span>
+                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  <span>{copied ? 'KOPYALANDI' : 'LİNKİ KOPYALA'}</span>
                 </button>
               </div>
             </div>

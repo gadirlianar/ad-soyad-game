@@ -2,19 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Sparkles,
-  Play,
-  LogIn,
-  Zap,
-  Shield,
-  Trophy,
-  Flame,
-  Gamepad2
-} from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { PLAYER_AVATARS } from '@/lib/constants';
+import { tactileAudio } from '@/lib/audio';
 
 export default function Home() {
   const router = useRouter();
@@ -42,10 +32,11 @@ export default function Home() {
   const handleCreateRoom = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setNotification({ type: 'warning', message: 'Zəhmət olmasa adınızı qeyd edin!' });
+      setNotification({ type: 'warning', message: 'OPERATOR ADINI DAXİL EDİN' });
       return;
     }
 
+    tactileAudio.playStopBuzzer();
     setIsLoading(true);
     setPlayerProfile(trimmedName, avatar);
 
@@ -63,12 +54,12 @@ export default function Home() {
       } else {
         setNotification({
           type: 'error',
-          message: res.error || 'Otaq yaradılarkən xəta baş verdi.',
+          message: res.error || 'OTAQ İNİSİALİZASİYA EDİLMƏDİ',
         });
       }
     } catch {
       setIsLoading(false);
-      setNotification({ type: 'error', message: 'Şəbəkə xətası baş verdi.' });
+      setNotification({ type: 'error', message: 'ŞƏBƏKƏ XƏTASI BAŞ VERDİ' });
     }
   };
 
@@ -77,14 +68,15 @@ export default function Home() {
     const trimmedCode = joinCode.trim().toUpperCase();
 
     if (!trimmedName) {
-      setNotification({ type: 'warning', message: 'Zəhmət olmasa adınızı qeyd edin!' });
+      setNotification({ type: 'warning', message: 'OPERATOR ADINI DAXİL EDİN' });
       return;
     }
     if (!trimmedCode || trimmedCode.length < 4) {
-      setNotification({ type: 'warning', message: 'Düzgün otaq kodunu daxil edin!' });
+      setNotification({ type: 'warning', message: 'DÜZGÜN 6-XANALI FREKANS KODU DAXİL EDİN' });
       return;
     }
 
+    tactileAudio.playFocusClick();
     setIsLoading(true);
     setPlayerProfile(trimmedName, avatar);
 
@@ -102,203 +94,209 @@ export default function Home() {
       } else {
         setNotification({
           type: 'error',
-          message: res.error || 'Otağa qoşulmaq mümkün olmadı.',
+          message: res.error || 'OTAĞA QOŞULMAQ MÜMKÜN OLMADI',
         });
       }
     } catch {
       setIsLoading(false);
-      setNotification({ type: 'error', message: 'Şəbəkə xətası baş verdi.' });
+      setNotification({ type: 'error', message: 'ŞƏBƏKƏ XƏTASI BAŞ VERDİ' });
     }
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
-      {/* Background Mesh Gradient */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-emerald-500/10 blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/4 h-80 w-80 rounded-full bg-violet-600/15 blur-[120px] pointer-events-none" />
-
-      <div className="mx-auto max-w-5xl relative z-10">
-        {/* Hero Title */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-14"
-        >
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-400 mb-4 shadow-inner">
-            <Sparkles className="h-4 w-4" />
-            <span>Klassik Söz Kateqoriyası Oyunu Canlı Formatda</span>
+    <div className="relative min-h-[calc(100vh-3.5rem)] px-3 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        {/* Editorial Swiss Top Header Strip */}
+        <div className="border border-white/[0.1] bg-[#0E1015] p-6 sm:p-10 mb-6 crosshair-corner">
+          <div className="flex items-center gap-3 font-mono text-[10px] tracking-tracked text-zinc-500 mb-3 uppercase">
+            <span className="inline-block h-2 w-2 bg-[#D4FF00] shadow-[0_0_6px_#D4FF00]" />
+            <span>TERMINAL // MODEL_TE_4.1 // SYSTEM_STANDBY</span>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white max-w-3xl mx-auto leading-tight">
-            Ad, Soyad, Şəhər, Ölkə... <br />
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-              STOP bas və Qalib Ol!
-            </span>
+
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display tracking-tighter text-white uppercase leading-[0.95]">
+            AD // SOYAD <br />
+            <span className="text-[#D4FF00]">ŞƏHƏR // ÖLKƏ</span>
           </h1>
-          <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
-            Dostlarınızla otaq yaradın, ortaq hərf ilə sözləri tapın, ilk sən STOP basaraq rəqiblərini sıxışdır və xalları topla!
-          </p>
-        </motion.div>
 
-        {/* Interactive Main Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="mx-auto max-w-lg rounded-3xl border border-white/[0.08] bg-[#08080a]/90 p-6 sm:p-8 backdrop-blur-2xl shadow-2xl relative"
-        >
-          {/* Tab Switcher */}
-          <div className="flex rounded-2xl bg-[#0e0e14] p-1.5 mb-6 border border-white/5">
+          <p className="mt-4 text-xs sm:text-sm font-mono text-zinc-400 max-w-2xl leading-relaxed">
+            Klassik söz kateqoriyası oyununun hardware-inspirasiyalı taktiki multiplayer platforması.
+            Split-flap hərf barabanı, modular sintezator kanalları və Bloomberg-səviyyəli real vaxt konsensus matrisi.
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4 text-[10px] font-mono text-zinc-500 pt-4 border-t border-white/[0.06]">
+            <span>ENGINE: HYBRID_AUTHORITATIVE</span>
+            <span>//</span>
+            <span>TELEMETRY: P2P_RADAR</span>
+            <span>//</span>
+            <span>CHANNELS: 07_DEFAULT</span>
+          </div>
+        </div>
+
+        {/* Master Control Deck Frame */}
+        <div className="border border-white/[0.1] bg-[#0E1015] p-4 sm:p-8 crosshair-corner">
+          {/* Hardware Rocker Deck Selector Tabs */}
+          <div className="grid grid-cols-2 gap-2 mb-6 p-1 bg-[#090A0C] border border-white/[0.08] font-mono text-xs">
             <button
-              onClick={() => setActiveTab('create')}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-bold transition-all ${
+              onClick={() => {
+                tactileAudio.playKeyStroke();
+                setActiveTab('create');
+              }}
+              className={`py-3 px-4 font-bold tracking-tracked transition cursor-pointer select-none ${
                 activeTab === 'create'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#181B22] text-[#D4FF00] border border-[#D4FF00]/40 shadow-sm'
+                  : 'text-zinc-500 hover:text-white'
               }`}
             >
-              <Gamepad2 className="h-4 w-4" />
-              <span>Yeni Otaq Yarat</span>
+              [DECK_A: YENİ OTAQ YARAT]
             </button>
             <button
-              onClick={() => setActiveTab('join')}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-bold transition-all ${
+              onClick={() => {
+                tactileAudio.playKeyStroke();
+                setActiveTab('join');
+              }}
+              className={`py-3 px-4 font-bold tracking-tracked transition cursor-pointer select-none ${
                 activeTab === 'join'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#181B22] text-[#D4FF00] border border-[#D4FF00]/40 shadow-sm'
+                  : 'text-zinc-500 hover:text-white'
               }`}
             >
-              <LogIn className="h-4 w-4" />
-              <span>Otağa Qoşul</span>
+              [DECK_B: FREKANSA QOŞUL]
             </button>
           </div>
 
-          {/* Form Fields */}
+          {/* Form Channels */}
           <div className="space-y-4">
-            {/* Player Name */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Adınız / Ləqəbiniz:
-              </label>
+            {/* Operator Identifier Input Bay */}
+            <div className="bg-[#12141A] border border-white/[0.08] p-4 focus-within:border-[#D4FF00] transition-colors">
+              <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-2">
+                <span>INPUT_BAY // OPERATOR_CALLSIGN</span>
+                <span>MAX_18_CHAR</span>
+              </div>
               <input
                 type="text"
                 maxLength={18}
-                placeholder="Məs: Anar, Nigar, Şahin..."
+                placeholder="MƏS: ANAR, NİGAR, RƏŞAD..."
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-[#0e0e14] px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none transition"
+                onFocus={() => tactileAudio.playFocusClick()}
+                onChange={(e) => {
+                  tactileAudio.playKeyStroke();
+                  setName(e.target.value);
+                }}
+                className="w-full bg-transparent font-mono text-xl sm:text-2xl font-bold text-white placeholder-zinc-700 focus:outline-none tracking-tight selection:bg-[#FF4800] selection:text-black"
               />
             </div>
 
-            {/* Avatar Picker */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Avatar Seçin:
-              </label>
-              <div className="grid grid-cols-8 gap-2">
+            {/* Hardware Pad Avatar Matrix */}
+            <div className="bg-[#12141A] border border-white/[0.08] p-4">
+              <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-3">
+                <span>PAD_MATRIX // OPERATOR_ICON</span>
+                <span className="text-zinc-300">SELECTED: {avatar}</span>
+              </div>
+              <div className="grid grid-cols-8 gap-1.5 sm:gap-2">
                 {PLAYER_AVATARS.map((av) => (
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     key={av}
                     type="button"
-                    onClick={() => setAvatar(av)}
-                    className={`h-10 w-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                    onClick={() => {
+                      tactileAudio.playKeyStroke();
+                      setAvatar(av);
+                    }}
+                    className={`h-10 sm:h-11 border text-lg sm:text-xl flex items-center justify-center transition-all hardware-key cursor-pointer ${
                       avatar === av
-                        ? 'bg-emerald-500/30 border-2 border-emerald-400 scale-110 shadow-lg shadow-emerald-500/20'
-                        : 'bg-[#0e0e14] border border-white/5 hover:bg-white/5'
+                        ? 'border-[#D4FF00] bg-[#1E222D] shadow-[0_0_10px_rgba(212,255,0,0.3)]'
+                        : 'border-white/[0.06] bg-[#090A0C] hover:border-white/[0.2] hover:bg-[#16181F]'
                     }`}
                   >
                     {av}
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* Join Room Code Input (If Join Tab) */}
+            {/* Frequency Room Code Input (If Join Tab) */}
             {activeTab === 'join' && (
-              <div className="pt-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                  6-Rəqəmli Otaq Kodu:
-                </label>
+              <div className="bg-[#12141A] border border-white/[0.08] p-4 focus-within:border-[#D4FF00] transition-colors">
+                <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-2">
+                  <span>FREQUENCY_CHANNEL // 6X_ALPHA_CODE</span>
+                  <span>HEX_SPEC</span>
+                </div>
                 <input
                   type="text"
                   maxLength={6}
-                  placeholder="Məs: AZ8K2P"
+                  placeholder="MƏS: AZ8K2P"
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0e0e14] px-4 py-3 font-mono text-center text-xl font-bold tracking-widest text-emerald-400 uppercase placeholder-slate-600 focus:border-emerald-500 focus:outline-none transition"
+                  onFocus={() => tactileAudio.playFocusClick()}
+                  onChange={(e) => {
+                    tactileAudio.playKeyStroke();
+                    setJoinCode(e.target.value.toUpperCase());
+                  }}
+                  className="w-full bg-transparent font-mono text-center text-3xl font-extrabold tracking-widest text-[#D4FF00] uppercase placeholder-zinc-700 focus:outline-none"
                 />
               </div>
             )}
 
-            {/* Submit Action Button */}
-            <div className="pt-4">
+            {/* Industrial Execution Switch */}
+            <div className="pt-2">
               {activeTab === 'create' ? (
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  whileHover={{ scale: 1.01 }}
+                <button
                   onClick={handleCreateRoom}
                   disabled={isLoading}
-                  className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 py-4 font-black text-slate-950 shadow-xl shadow-emerald-500/25 transition disabled:opacity-50 flex items-center justify-center gap-2 text-base cursor-pointer"
+                  className="w-full py-4 px-6 bg-[#FF4800] hover:bg-[#FF5E1E] text-black font-mono font-black text-sm sm:text-base tracking-tracked uppercase shadow-hard-orange hardware-key cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <Play className="h-5 w-5 fill-current" />
-                  <span>{isLoading ? 'Otaq yaradılır...' : 'OTAQ YARAT VƏ BAŞLA'}</span>
-                </motion.button>
+                  <span>{isLoading ? 'İNTİALİZASİYA EDİLİR...' : 'OTAQ YARAT // TRANSMİSSİYANI BAŞLAT'}</span>
+                </button>
               ) : (
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  whileHover={{ scale: 1.01 }}
+                <button
                   onClick={handleJoinRoom}
                   disabled={isLoading}
-                  className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 py-4 font-black text-slate-950 shadow-xl shadow-emerald-500/25 transition disabled:opacity-50 flex items-center justify-center gap-2 text-base cursor-pointer"
+                  className="w-full py-4 px-6 bg-[#D4FF00] hover:bg-[#DCFF33] text-black font-mono font-black text-sm sm:text-base tracking-tracked uppercase shadow-hard-lime hardware-key cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <LogIn className="h-5 w-5" />
-                  <span>{isLoading ? 'Qoşulur...' : 'OTAĞA QOŞUL'}</span>
-                </motion.button>
+                  <span>{isLoading ? 'QOŞULUR...' : 'FREKANSA QOŞUL // LINK ENGAGE'}</span>
+                </button>
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Feature Highlights Grid */}
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0e0e12]/70 p-5 backdrop-blur-xl">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 mb-3">
-              <Zap className="h-5 w-5" />
+        {/* Technical Specification Grid */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
+            <div className="font-mono text-[9px] tracking-tracked text-[#D4FF00] mb-1">
+              SPEC_01 // LATENCY
             </div>
-            <h4 className="font-bold text-white text-sm">Canlı Sinxronizasiya</h4>
-            <p className="mt-1 text-xs text-slate-400">
-              Bütün oyunçular eyni anda 3D rulet hərf seçimi və canlı taymerlə yarışır.
+            <h4 className="font-mono font-bold text-white text-xs uppercase">SUB-10MS SYNC</h4>
+            <p className="mt-1 text-[11px] font-mono text-zinc-400">
+              Authoritative server state və avtonom rehydration arxitekturası.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0e0e12]/70 p-5 backdrop-blur-xl">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400 mb-3">
-              <Flame className="h-5 w-5" />
+          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
+            <div className="font-mono text-[9px] tracking-tracked text-[#FF4800] mb-1">
+              SPEC_02 // SPLIT_FLAP
             </div>
-            <h4 className="font-bold text-white text-sm">Taktik &quot;STOP&quot; Düyməsi</h4>
-            <p className="mt-1 text-xs text-slate-400">
-              Bütün xanaları ilk bitirən STOP basır və digərlərinə 5 saniyə möhlət qalır!
+            <h4 className="font-mono font-bold text-white text-xs uppercase">MECHANICAL REEL</h4>
+            <p className="mt-1 text-[11px] font-mono text-zinc-400">
+              3D solenoid akustik simulyasiyası ilə hərf seçimi barabanı.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0e0e12]/70 p-5 backdrop-blur-xl">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-400 mb-3">
-              <Shield className="h-5 w-5" />
+          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
+            <div className="font-mono text-[9px] tracking-tracked text-[#D4FF00] mb-1">
+              SPEC_03 // EMERGENCY
             </div>
-            <h4 className="font-bold text-white text-sm">Ağıllı Xallama & Səsvermə</h4>
-            <p className="mt-1 text-xs text-slate-400">
-              Təkrar cavablar 5 xal, unikal 10 xal, tək cavab isə 15 xal qazandırır.
+            <h4 className="font-mono font-bold text-white text-xs uppercase">TACTILE STOP CUTOFF</h4>
+            <p className="mt-1 text-[11px] font-mono text-zinc-400">
+              Bütün xanaları dolduran ilk operator 5 saniyəlik möhlət aktivləşdirir.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0e0e12]/70 p-5 backdrop-blur-xl">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-3">
-              <Trophy className="h-5 w-5" />
+          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
+            <div className="font-mono text-[9px] tracking-tracked text-zinc-400 mb-1">
+              SPEC_04 // AUDIT
             </div>
-            <h4 className="font-bold text-white text-sm">Olimpiya Podiumu & Qələbə</h4>
-            <p className="mt-1 text-xs text-slate-400">
-              Oyun bitdikdə Qızıl, Gümüş, Bürünc kuboklar və konfeti şousu ilə qalib qeyd olunur.
+            <h4 className="font-mono font-bold text-white text-xs uppercase">LEDGER CONSENSUS</h4>
+            <p className="mt-1 text-[11px] font-mono text-zinc-400">
+              Təkrar, unikal və tək cavablar üçün split-diff maliyyə auditi.
             </p>
           </div>
         </div>

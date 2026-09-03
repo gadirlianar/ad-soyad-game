@@ -3,92 +3,110 @@
 @tailwind utilities;
 
 :root {
-  --background: #090d16;
-  --foreground: #f8fafc;
-  --card-bg: rgba(18, 24, 38, 0.75);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --canvas-base: #090A0C;
+  --surface-bay: #12141A;
+  --surface-elevated: #161922;
+  --wire-subtle: rgba(255, 255, 255, 0.08);
+  --wire-bold: rgba(255, 255, 255, 0.16);
+  --signal-orange: #FF4800;
+  --signal-lime: #D4FF00;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  background-image: 
-    radial-gradient(at 10% 10%, rgba(34, 197, 94, 0.08) 0px, transparent 50%),
-    radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-    radial-gradient(at 50% 90%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+  color: #E1E4EA;
+  background-color: var(--canvas-base);
   min-height: 100vh;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
   overflow-x: hidden;
 }
 
-/* Glassmorphism utility */
-.glass-panel {
-  background: var(--card-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--card-border);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+/* Precision Crosshair Corner Intersection Utility */
+.crosshair-corner {
+  position: relative;
+}
+.crosshair-corner::before {
+  content: "+";
+  position: absolute;
+  top: -7px;
+  left: -5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  font-weight: 300;
+}
+.crosshair-corner::after {
+  content: "+";
+  position: absolute;
+  bottom: -7px;
+  right: -5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  font-weight: 300;
 }
 
-.glass-panel-glow {
-  background: var(--card-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(74, 222, 128, 0.3);
-  box-shadow: 0 0 25px rgba(34, 197, 94, 0.2);
+/* Industrial Danger / Warning Stripes */
+.hazard-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #090A0C,
+    #090A0C 10px,
+    #FF4800 10px,
+    #FF4800 20px
+  );
 }
 
-/* Tactile button styling */
-.tactile-btn {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+.hazard-stripes-subtle {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(18, 20, 26, 0.9),
+    rgba(18, 20, 26, 0.9) 8px,
+    rgba(255, 72, 0, 0.25) 8px,
+    rgba(255, 72, 0, 0.25) 16px
+  );
 }
 
-.tactile-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+/* Mechanical Hardware Tactile Push */
+.hardware-key {
+  transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.08s ease, background-color 0.1s ease;
+  box-shadow: 0px 3px 0px rgba(0, 0, 0, 0.8), inset 0px 1px 0px rgba(255, 255, 255, 0.1);
 }
-
-.tactile-btn:active {
+.hardware-key:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0px 1px 0px rgba(0, 0, 0, 0.9), inset 0px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Big STOP Smash Button */
-.stop-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #991b1b 100%);
-  box-shadow: 0 8px 0 #7f1d1d, 0 15px 30px rgba(239, 68, 68, 0.4);
-  transition: all 0.1s ease-in-out;
+/* Industrial STOP Switch */
+.stop-cutoff-armed {
+  background: #FF4800;
+  color: #000000;
+  box-shadow: 0px 8px 0px #992B00, 0px 16px 32px rgba(255, 72, 0, 0.4);
+  transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.08s ease;
+}
+.stop-cutoff-armed:hover {
+  background: #FF5E1E;
+}
+.stop-cutoff-armed:active {
+  transform: translateY(5px);
+  box-shadow: 0px 3px 0px #992B00, 0px 6px 16px rgba(255, 72, 0, 0.2);
 }
 
-.stop-btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 11px 0 #7f1d1d, 0 20px 40px rgba(239, 68, 68, 0.6);
-}
-
-.stop-btn:active:not(:disabled) {
-  transform: translateY(6px);
-  box-shadow: 0 2px 0 #7f1d1d, 0 5px 15px rgba(239, 68, 68, 0.3);
-}
-
-.stop-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: 0 4px 0 #450a0a;
-}
-
-/* Custom Scrollbar */
+/* Technical Hairline Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #090A0C;
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-  border-radius: 9999px;
+  background: #232732;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: #FF4800;
 }
