@@ -200,6 +200,38 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { room, playerId } = get();
     if (!room) return { success: false, error: 'Otaq yoxdur' };
 
+    // Optimistic local state updates for instant UI response!
+    if (action === 'update_settings' && actionData?.settings) {
+      set((state) => {
+        if (!state.room) return state;
+        const newSettings = { ...state.room.settings, ...(actionData.settings as Record<string, unknown>) };
+        return {
+          room: {
+            ...state.room,
+            settings: newSettings as typeof state.room.settings,
+            roundTimeRemaining: (newSettings.roundDuration as number) ?? state.room.roundTimeRemaining,
+          },
+        };
+      });
+    }
+
+    if (action === 'ready') {
+      const isReady = actionData?.isReady !== undefined ? Boolean(actionData.isReady) : true;
+      set((state) => {
+        if (!state.room || !state.room.players[playerId]) return state;
+        const currentP = state.room.players[playerId];
+        return {
+          room: {
+            ...state.room,
+            players: {
+              ...state.room.players,
+              [playerId]: { ...currentP, isReady },
+            },
+          },
+        };
+      });
+    }
+
     try {
       const res = await fetch('/api/game/action', {
         method: 'POST',
@@ -209,6 +241,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           action,
           playerId,
           data: actionData,
+          settings: actionData?.settings,
+          isReady: actionData?.isReady,
         }),
       });
       const data = await res.json();
@@ -219,6 +253,16 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       // Also fire via socket for instant broadcast
       const socket = getSocket();
       if (socket.connected) {
+        if (action === 'update_settings' && actionData?.settings) {
+          socket.emit('room:update_settings', { roomCode: room.code, settings: actionData.settings });
+        }
+        if (action === 'ready') {
+          socket.emit('player:ready', {
+            roomCode: room.code,
+            playerId,
+            isReady: Boolean(actionData?.isReady),
+          });
+        }
         if (action === 'start') socket.emit('game:start', { roomCode: room.code });
         if (action === 'stop') socket.emit('game:stop', { roomCode: room.code, playerId });
         if (action === 'vote' && actionData) {
@@ -228,6 +272,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             targetPlayerId: String(actionData.targetPlayerId),
             categoryId: String(actionData.categoryId),
             approved: Boolean(actionData.approved),
+          });
+        }
+        if (action === 'override' && actionData) {
+          socket.emit('review:host_override', {
+            roomCode: room.code,
+            targetPlayerId: String(actionData.targetPlayerId),
+            categoryId: String(actionData.categoryId),
+            isValid: Boolean(actionData.isValid),
           });
         }
         if (action === 'finalize') socket.emit('review:finalize', { roomCode: room.code });

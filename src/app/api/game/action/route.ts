@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getSharedRoom,
+  fetchRoom,
+  saveRoom,
   startSharedGame,
   triggerSharedStop,
-  roomsStore,
+  updateSharedSettings,
+  setSharedPlayerReady,
 } from '@/server/sharedStore';
 import { calculateRoundScores } from '@/lib/gameLogic';
 
@@ -13,15 +15,27 @@ export async function POST(req: NextRequest) {
     const { roomCode, action, playerId, data } = body;
 
     const code = (roomCode || '').toUpperCase();
-    const room = getSharedRoom(code);
+    const room = await fetchRoom(code);
 
     if (!room) {
       return NextResponse.json({ success: false, error: 'Otaq tapılmadı.' }, { status: 404 });
     }
 
     switch (action) {
+      case 'update_settings': {
+        const settings = data?.settings || body.settings || {};
+        const result = await updateSharedSettings(code, playerId, settings);
+        return NextResponse.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      case 'ready': {
+        const isReady = data?.isReady !== undefined ? data.isReady : body.isReady;
+        const result = await setSharedPlayerReady(code, playerId, Boolean(isReady));
+        return NextResponse.json(result, { status: result.success ? 200 : 400 });
+      }
+
       case 'start': {
-        const result = startSharedGame(code, playerId);
+        const result = await startSharedGame(code, playerId);
         return NextResponse.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -30,6 +44,7 @@ export async function POST(req: NextRequest) {
         if (room.status === 'PLAYING') {
           if (!room.answers[playerId]) room.answers[playerId] = {};
           room.answers[playerId][categoryId] = value;
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }
@@ -39,12 +54,13 @@ export async function POST(req: NextRequest) {
         if (room.answers) {
           if (!room.answers[playerId]) room.answers[playerId] = {};
           room.answers[playerId] = { ...room.answers[playerId], ...answers };
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }
 
       case 'stop': {
-        const result = triggerSharedStop(code, playerId);
+        const result = await triggerSharedStop(code, playerId);
         return NextResponse.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -58,25 +74,29 @@ export async function POST(req: NextRequest) {
           } else {
             room.votes[voteKey][voterId] = approved;
           }
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }
 
       case 'override': {
         const { targetPlayerId, categoryId, isValid } = data || {};
-        if (room.status === 'REVIEW' && room.hostId === playerId) {
+        const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
+        if (room.status === 'REVIEW' && isHost) {
           const voteKey = `${targetPlayerId}_${categoryId}`;
           if (room.manualOverrides[voteKey] === isValid) {
             delete room.manualOverrides[voteKey];
           } else {
             room.manualOverrides[voteKey] = isValid;
           }
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }
 
       case 'finalize': {
-        if (room.status === 'REVIEW' && room.hostId === playerId) {
+        const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
+        if (room.status === 'REVIEW' && isHost) {
           const roundResult = calculateRoundScores(room);
           room.roundResults.push(roundResult);
 
@@ -92,21 +112,24 @@ export async function POST(req: NextRequest) {
           } else {
             room.status = 'SCOREBOARD';
           }
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }
 
       case 'next_round': {
-        if (room.status === 'SCOREBOARD' && room.hostId === playerId) {
+        const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
+        if (room.status === 'SCOREBOARD' && isHost) {
           room.currentRound += 1;
-          const result = startSharedGame(code, playerId);
+          const result = await startSharedGame(code, playerId);
           return NextResponse.json(result);
         }
         return NextResponse.json({ success: true, room });
       }
 
       case 'play_again': {
-        if (room.status === 'FINISHED' && room.hostId === playerId) {
+        const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
+        if (room.status === 'FINISHED' && isHost) {
           room.status = 'LOBBY';
           room.currentRound = 1;
           room.currentLetter = '';
@@ -124,6 +147,7 @@ export async function POST(req: NextRequest) {
             p.isReady = p.isHost;
             p.isSpectator = false;
           }
+          await saveRoom(room);
         }
         return NextResponse.json({ success: true, room });
       }

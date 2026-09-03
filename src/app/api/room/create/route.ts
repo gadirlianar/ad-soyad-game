@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Oyunçu adı tələb olunur.' }, { status: 400 });
     }
 
-    const room = createSharedRoom(
+    const room = await createSharedRoom(
       {
         id: player.id || 'p_' + Math.random().toString(36).substring(2, 9),
         name: player.name.trim(),

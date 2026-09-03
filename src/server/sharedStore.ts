@@ -8,7 +8,7 @@ import {
 import { DEFAULT_SETTINGS } from '@/lib/constants';
 import { calculateRoundScores, generateRoomCode } from '@/lib/gameLogic';
 
-// Use globalThis to persist rooms in memory across API route invocations
+// In-memory fallback
 declare global {
   // eslint-disable-next-line no-var
   var __sharedRoomsStore__: Map<string, Room> | undefined;
@@ -18,7 +18,74 @@ if (!globalThis.__sharedRoomsStore__) {
   globalThis.__sharedRoomsStore__ = new Map<string, Room>();
 }
 
-export const roomsStore = globalThis.__sharedRoomsStore__;
+export const inMemoryStore = globalThis.__sharedRoomsStore__;
+
+const REDIS_URL =
+  process.env.UPSTASH_REDIS_REST_URL || 'https://growing-colt-140910.upstash.io';
+const REDIS_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN ||
+  'gQAAAAAAAiZuAQIgcDI4MzU5MmE4Y2QyYmU0YjhhYWU2MGZiZmRhMWM5YjQ2Yg';
+
+/**
+ * Executes a Redis command via the Upstash REST API
+ */
+async function redisCommand(...args: (string | number)[]): Promise<unknown> {
+  if (!REDIS_URL || !REDIS_TOKEN) return null;
+  try {
+    const res = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(args),
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Saves a room to persistent Redis with a 24-hour expiration
+ */
+export async function saveRoom(room: Room): Promise<void> {
+  const code = room.code.toUpperCase();
+  inMemoryStore.set(code, room);
+
+  try {
+    const serialized = JSON.stringify(room);
+    await redisCommand('SET', `ad_soyad_room:${code}`, serialized, 'EX', 86400);
+  } catch (err) {
+    console.error('Failed to save room to Redis:', err);
+  }
+}
+
+/**
+ * Fetches a room from Redis or in-memory store
+ */
+export async function fetchRoom(code: string): Promise<Room | null> {
+  const normalized = code.toUpperCase();
+
+  try {
+    const result = (await redisCommand('GET', `ad_soyad_room:${normalized}`)) as string | null;
+    if (result) {
+      const parsed = JSON.parse(result) as Room;
+      inMemoryStore.set(normalized, parsed);
+      return reconcileRoomState(parsed);
+    }
+  } catch (err) {
+    console.error('Failed to fetch room from Redis:', err);
+  }
+
+  // Fallback to in-memory store
+  const local = inMemoryStore.get(normalized);
+  if (!local) return null;
+  return reconcileRoomState(local);
+}
 
 /**
  * Reconciles serverless timer state based on timestamps
@@ -33,7 +100,6 @@ export function reconcileRoomState(room: Room): Room {
     room.countdownTime = remaining;
     if (remaining <= 0) {
       room.status = 'PLAYING';
-      // Mark start of playing phase
       room.createdAt = now;
       room.roundTimeRemaining = room.settings.roundDuration;
     }
@@ -41,7 +107,6 @@ export function reconcileRoomState(room: Room): Room {
 
   // If playing phase is active
   if (room.status === 'PLAYING') {
-    // If STOP was triggered with grace period
     if (room.graceTimeRemaining !== null && room.stoppedBy) {
       const elapsedGrace = Math.floor((now - (room.createdAt || now)) / 1000);
       const remainingGrace = Math.max(0, (room.settings.gracePeriodSeconds || 5) - elapsedGrace);
@@ -66,19 +131,15 @@ export function reconcileRoomState(room: Room): Room {
   return room;
 }
 
-export function getSharedRoom(code: string): Room | null {
-  const room = roomsStore.get(code.toUpperCase());
-  if (!room) return null;
-  return reconcileRoomState(room);
-}
-
-export function createSharedRoom(
+export async function createSharedRoom(
   playerData: { id: string; name: string; avatar: string },
   customSettings?: Partial<RoomSettings>
-): Room {
+): Promise<Room> {
   let roomCode = generateRoomCode();
-  while (roomsStore.has(roomCode)) {
+  let existing = await fetchRoom(roomCode);
+  while (existing) {
     roomCode = generateRoomCode();
+    existing = await fetchRoom(roomCode);
   }
 
   const host: Player = {
@@ -119,16 +180,16 @@ export function createSharedRoom(
     createdAt: Date.now(),
   };
 
-  roomsStore.set(roomCode, room);
+  await saveRoom(room);
   return room;
 }
 
-export function joinSharedRoom(
+export async function joinSharedRoom(
   roomCode: string,
   playerData: { id: string; name: string; avatar: string }
-): { success: boolean; room?: Room; error?: string } {
+): Promise<{ success: boolean; room?: Room; error?: string }> {
   const code = roomCode.toUpperCase();
-  const room = roomsStore.get(code);
+  const room = await fetchRoom(code);
 
   if (!room) {
     return { success: false, error: 'Otaq tapılmadı! Kodu yoxlayın.' };
@@ -142,6 +203,7 @@ export function joinSharedRoom(
     existing.name = playerData.name || existing.name;
     existing.avatar = playerData.avatar || existing.avatar;
     existing.isConnected = true;
+    await saveRoom(room);
     return { success: true, room };
   }
 
@@ -161,13 +223,60 @@ export function joinSharedRoom(
   };
 
   room.players[playerData.id] = newPlayer;
+  await saveRoom(room);
   return { success: true, room };
 }
 
-export function startSharedGame(roomCode: string, requesterId: string): { success: boolean; room?: Room; error?: string } {
-  const room = getSharedRoom(roomCode);
+export async function updateSharedSettings(
+  roomCode: string,
+  requesterId: string,
+  newSettings: Partial<RoomSettings>
+): Promise<{ success: boolean; room?: Room; error?: string }> {
+  const room = await fetchRoom(roomCode);
   if (!room) return { success: false, error: 'Otaq tapılmadı.' };
-  if (room.hostId !== requesterId) return { success: false, error: 'Yalnız host oyunu başlada bilər.' };
+
+  // Host verification
+  if (room.hostId !== requesterId && !room.players[requesterId]?.isHost) {
+    return { success: false, error: 'Yalnız host tənzimləmələri dəyişə bilər.' };
+  }
+
+  room.settings = {
+    ...room.settings,
+    ...newSettings,
+  };
+  room.roundTimeRemaining = room.settings.roundDuration;
+
+  await saveRoom(room);
+  return { success: true, room };
+}
+
+export async function setSharedPlayerReady(
+  roomCode: string,
+  playerId: string,
+  isReady: boolean
+): Promise<{ success: boolean; room?: Room; error?: string }> {
+  const room = await fetchRoom(roomCode);
+  if (!room) return { success: false, error: 'Otaq tapılmadı.' };
+
+  if (room.players[playerId]) {
+    room.players[playerId].isReady = isReady;
+    await saveRoom(room);
+    return { success: true, room };
+  }
+
+  return { success: false, error: 'Oyunçu tapılmadı.' };
+}
+
+export async function startSharedGame(
+  roomCode: string,
+  requesterId: string
+): Promise<{ success: boolean; room?: Room; error?: string }> {
+  const room = await fetchRoom(roomCode);
+  if (!room) return { success: false, error: 'Otaq tapılmadı.' };
+
+  if (room.hostId !== requesterId && !room.players[requesterId]?.isHost) {
+    return { success: false, error: 'Yalnız host oyunu başlada bilər.' };
+  }
 
   for (const player of Object.values(room.players)) {
     player.isSpectator = false;
@@ -197,11 +306,15 @@ export function startSharedGame(roomCode: string, requesterId: string): { succes
     }
   }
 
+  await saveRoom(room);
   return { success: true, room };
 }
 
-export function triggerSharedStop(roomCode: string, playerId: string): { success: boolean; room?: Room; error?: string } {
-  const room = getSharedRoom(roomCode);
+export async function triggerSharedStop(
+  roomCode: string,
+  playerId: string
+): Promise<{ success: boolean; room?: Room; error?: string }> {
+  const room = await fetchRoom(roomCode);
   if (!room || room.status !== 'PLAYING') {
     return { success: false, error: 'Oyun aktiv deyil.' };
   }
@@ -225,7 +338,8 @@ export function triggerSharedStop(roomCode: string, playerId: string): { success
   room.stoppedBy = { id: player.id, name: player.name };
   const graceSeconds = room.settings.gracePeriodSeconds || 5;
   room.graceTimeRemaining = graceSeconds;
-  room.createdAt = Date.now(); // reset timer reference for grace period
+  room.createdAt = Date.now();
 
+  await saveRoom(room);
   return { success: true, room };
 }

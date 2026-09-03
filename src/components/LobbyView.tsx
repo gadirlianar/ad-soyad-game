@@ -26,12 +26,14 @@ import {
   DURATION_OPTIONS,
   ROUND_OPTIONS,
   DEFAULT_CATEGORIES,
+  SUGGESTED_CUSTOM_CATEGORIES,
   PLAYER_AVATARS,
   AZERBAIJANI_ALPHABET,
   ENGLISH_ALPHABET
 } from '@/lib/constants';
 import { Category } from '@/types/game';
 import { QRCodeModal } from './QRCodeModal';
+import { soundManager } from '@/lib/audio';
 
 export const LobbyView: React.FC = () => {
   const { room, playerId, playerName, playerAvatar, setPlayerProfile, setNotification, sendGameAction } =
@@ -39,22 +41,22 @@ export const LobbyView: React.FC = () => {
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
-  const [isConfigDrawerOpen, setIsConfigDrawerOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempName, setTempName] = useState(playerName);
   const [tempAvatar, setTempAvatar] = useState(playerAvatar);
 
   if (!room) return null;
 
-  const currentPlayer = room.players[playerId];
-  const isHost = currentPlayer?.isHost;
   const playersList = Object.values(room.players);
+  const currentPlayer = room.players[playerId];
+  // Robust Host calculation: true if hostId matches, or flagged as host, or only player in room
+  const isHost = Boolean(room.hostId === playerId || currentPlayer?.isHost || playersList.length === 1);
   const allPlayersReady = playersList.every((p) => p.isReady || p.isHost);
   const canStartGame = isHost && playersList.length >= 1;
 
   const handleToggleReady = () => {
-    if (!currentPlayer) return;
-    const nextReady = !currentPlayer.isReady;
+    soundManager.playFocusClick();
+    const nextReady = currentPlayer ? !currentPlayer.isReady : true;
     sendGameAction('ready', { playerId, isReady: nextReady });
   };
 
@@ -414,17 +416,20 @@ export const LobbyView: React.FC = () => {
                 <Hourglass className="h-3.5 w-3.5 text-emerald-400" />
                 <span>Raund Müddəti:</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {DURATION_OPTIONS.slice(0, 4).map((opt) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {DURATION_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     disabled={!isHost}
-                    onClick={() => handleUpdateDuration(opt.value)}
-                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                    onClick={() => {
+                      soundManager.playFocusClick();
+                      handleUpdateDuration(opt.value);
+                    }}
+                    className={`rounded-xl border px-2.5 py-2 text-xs font-semibold transition ${
                       room.settings.roundDuration === opt.value
-                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-md shadow-emerald-500/10'
                         : 'border-white/5 bg-white/[0.02] text-slate-400 hover:border-white/10 hover:text-white'
-                    }`}
+                    } ${!isHost ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     {opt.label}
                   </button>
@@ -443,14 +448,17 @@ export const LobbyView: React.FC = () => {
                   <button
                     key={num}
                     disabled={!isHost}
-                    onClick={() => handleUpdateRounds(num)}
+                    onClick={() => {
+                      soundManager.playFocusClick();
+                      handleUpdateRounds(num);
+                    }}
                     className={`flex-1 rounded-xl border py-2 text-xs font-bold transition ${
                       room.settings.totalRounds === num
-                        ? 'border-teal-500 bg-teal-500/20 text-teal-300'
+                        ? 'border-teal-500 bg-teal-500/20 text-teal-300 shadow-md shadow-teal-500/10'
                         : 'border-white/5 bg-white/[0.02] text-slate-400 hover:border-white/10 hover:text-white'
-                    }`}
+                    } ${!isHost ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
-                    {num}
+                    {num} Raund
                   </button>
                 ))}
               </div>
@@ -462,17 +470,31 @@ export const LobbyView: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   disabled={!isHost}
-                  onClick={() => handleToggleAlphabet('az')}
-                  className="flex-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-300"
+                  onClick={() => {
+                    soundManager.playFocusClick();
+                    handleToggleAlphabet('az');
+                  }}
+                  className={`flex-1 rounded-xl border py-2.5 text-xs font-bold transition ${
+                    room.settings.alphabet.includes('Ə')
+                      ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-300 shadow-md shadow-emerald-500/10'
+                      : 'border-white/10 bg-white/[0.02] text-slate-400 hover:text-white'
+                  } ${!isHost ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
-                  Azərbaycan (Ə, Ç, Ş...)
+                  🇦🇿 Azərbaycan (Ə, Ç, Ş, Ö, Ü...)
                 </button>
                 <button
                   disabled={!isHost}
-                  onClick={() => handleToggleAlphabet('en')}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.02] py-2 text-xs font-bold text-slate-400 hover:text-white"
+                  onClick={() => {
+                    soundManager.playFocusClick();
+                    handleToggleAlphabet('en');
+                  }}
+                  className={`flex-1 rounded-xl border py-2.5 text-xs font-bold transition ${
+                    !room.settings.alphabet.includes('Ə')
+                      ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-300 shadow-md shadow-emerald-500/10'
+                      : 'border-white/10 bg-white/[0.02] text-slate-400 hover:text-white'
+                  } ${!isHost ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
-                  İngilis (A-Z)
+                  🇬🇧 İngilis (A-Z)
                 </button>
               </div>
             </div>
@@ -489,12 +511,15 @@ export const LobbyView: React.FC = () => {
                     <button
                       key={cat.id}
                       disabled={!isHost}
-                      onClick={() => handleToggleCategory(cat)}
+                      onClick={() => {
+                        soundManager.playFocusClick();
+                        handleToggleCategory(cat);
+                      }}
                       className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                         isActive
-                          ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
-                          : 'border-white/5 bg-white/[0.02] text-slate-500 line-through'
-                      }`}
+                          ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-sm'
+                          : 'border-white/5 bg-white/[0.02] text-slate-500 line-through opacity-50'
+                      } ${!isHost ? 'cursor-not-allowed' : 'hover:scale-[1.02]'}`}
                     >
                       {isActive && <Check className="h-3 w-3 text-emerald-400" />}
                       <span>{cat.azLabel}</span>
@@ -508,8 +533,11 @@ export const LobbyView: React.FC = () => {
                     <button
                       key={cat.id}
                       disabled={!isHost}
-                      onClick={() => handleToggleCategory(cat)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/50 bg-violet-500/20 px-3 py-1.5 text-xs font-semibold text-violet-300"
+                      onClick={() => {
+                        soundManager.playFocusClick();
+                        handleToggleCategory(cat);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/50 bg-violet-500/20 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:scale-[1.02] transition"
                     >
                       <span>{cat.azLabel}</span>
                       {isHost && <Trash2 className="h-3 w-3 ml-1 hover:text-rose-400" />}
@@ -517,12 +545,48 @@ export const LobbyView: React.FC = () => {
                   ))}
               </div>
 
+              {/* Suggested Quick-Add Categories */}
+              {isHost && (
+                <div className="mb-4">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">
+                    Tövsiyə olunan əlavə kateqoriyalar:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUGGESTED_CUSTOM_CATEGORIES.map((sug) => {
+                      const alreadyAdded = room.settings.categories.some(
+                        (c) => c.label.toLowerCase() === sug.label.toLowerCase()
+                      );
+                      if (alreadyAdded) return null;
+                      return (
+                        <button
+                          key={sug.id}
+                          onClick={() => {
+                            soundManager.playFocusClick();
+                            sendGameAction('update_settings', {
+                              settings: { categories: [...room.settings.categories, sug] },
+                            });
+                            setNotification({
+                              type: 'success',
+                              message: `"${sug.azLabel}" əlavə olundu!`,
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-300 hover:bg-teal-500/20 hover:border-teal-500/50 transition"
+                        >
+                          <Plus className="h-3 w-3" />
+                          <span>{sug.azLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Add Custom Category */}
               {isHost && (
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Xüsusi kateqoriya (məs: Peşə, Brend)..."
+                    placeholder="Xüsusi kateqoriya (məs: Brend, Avtomobil)..."
                     value={customCategoryInput}
                     onChange={(e) => setCustomCategoryInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
