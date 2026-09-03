@@ -5,11 +5,13 @@ let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 
 export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> {
   if (!socket) {
-    // When connecting from browser, connect to current host origin
-    socket = io({
+    // If custom WebSocket server URL is defined (e.g. Render / Railway / VPS), use it
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+
+    socket = io(socketUrl, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
       transports: ['websocket', 'polling'],
     });
