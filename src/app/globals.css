@@ -3,110 +3,58 @@
 @tailwind utilities;
 
 :root {
-  --canvas-base: #090A0C;
-  --surface-bay: #12141A;
-  --surface-elevated: #161922;
-  --wire-subtle: rgba(255, 255, 255, 0.08);
-  --wire-bold: rgba(255, 255, 255, 0.16);
-  --signal-orange: #FF4800;
-  --signal-lime: #D4FF00;
+  --canvas-bg: #F5F5F7;
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --card-border: rgba(0, 0, 0, 0.05);
+}
+
+.dark {
+  --canvas-bg: #000000;
+  --card-bg: rgba(22, 22, 24, 0.72);
+  --card-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
-  color: #E1E4EA;
-  background-color: var(--canvas-base);
-  min-height: 100vh;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  background-color: var(--canvas-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
 }
 
-/* Precision Crosshair Corner Intersection Utility */
-.crosshair-corner {
-  position: relative;
-}
-.crosshair-corner::before {
-  content: "+";
-  position: absolute;
-  top: -7px;
-  left: -5px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.25);
-  pointer-events: none;
-  font-weight: 300;
-}
-.crosshair-corner::after {
-  content: "+";
-  position: absolute;
-  bottom: -7px;
-  right: -5px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.25);
-  pointer-events: none;
-  font-weight: 300;
+/* Apple Frosted Glass Material */
+.apple-glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--card-border);
 }
 
-/* Industrial Danger / Warning Stripes */
-.hazard-stripes {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    #090A0C,
-    #090A0C 10px,
-    #FF4800 10px,
-    #FF4800 20px
-  );
+/* Apple Card Surface */
+.apple-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03);
 }
 
-.hazard-stripes-subtle {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    rgba(18, 20, 26, 0.9),
-    rgba(18, 20, 26, 0.9) 8px,
-    rgba(255, 72, 0, 0.25) 8px,
-    rgba(255, 72, 0, 0.25) 16px
-  );
+.dark .apple-card {
+  background: rgba(22, 22, 24, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Mechanical Hardware Tactile Push */
-.hardware-key {
-  transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.08s ease, background-color 0.1s ease;
-  box-shadow: 0px 3px 0px rgba(0, 0, 0, 0.8), inset 0px 1px 0px rgba(255, 255, 255, 0.1);
-}
-.hardware-key:active {
-  transform: translateY(2px);
-  box-shadow: 0px 1px 0px rgba(0, 0, 0, 0.9), inset 0px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Industrial STOP Switch */
-.stop-cutoff-armed {
-  background: #FF4800;
-  color: #000000;
-  box-shadow: 0px 8px 0px #992B00, 0px 16px 32px rgba(255, 72, 0, 0.4);
-  transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.08s ease;
-}
-.stop-cutoff-armed:hover {
-  background: #FF5E1E;
-}
-.stop-cutoff-armed:active {
-  transform: translateY(5px);
-  box-shadow: 0px 3px 0px #992B00, 0px 6px 16px rgba(255, 72, 0, 0.2);
-}
-
-/* Technical Hairline Scrollbar */
+/* Apple Native Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090A0C;
-  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #232732;
+  background: rgba(140, 140, 145, 0.3);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF4800;
+  background: rgba(140, 140, 145, 0.5);
 }

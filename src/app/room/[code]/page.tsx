@@ -8,7 +8,7 @@ import { GameArena } from '@/components/GameArena';
 import { ReviewMatrix } from '@/components/ReviewMatrix';
 import { PodiumView } from '@/components/PodiumView';
 import { PLAYER_AVATARS } from '@/lib/constants';
-import { ArrowLeft, LogIn } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { tactileAudio } from '@/lib/audio';
 
@@ -56,11 +56,11 @@ export default function RoomPage() {
   const handleManualJoin = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setNotification({ type: 'warning', message: 'OPERATOR ADINI DAXİL EDİN' });
+      setNotification({ type: 'warning', message: 'Zəhmət olmasa adınızı qeyd edin' });
       return;
     }
 
-    tactileAudio.playStopBuzzer();
+    tactileAudio.playKeyStroke();
     setIsJoining(true);
     setPlayerProfile(trimmedName, avatar);
 
@@ -73,13 +73,13 @@ export default function RoomPage() {
 
       setIsJoining(false);
       if (res.success && res.room) {
-        setNotification({ type: 'success', message: `${res.room.code} FREKANSINA QOŞULDUNUZ` });
+        setNotification({ type: 'success', message: `${res.room.code} otağına qoşuldunuz` });
       } else {
-        setNotification({ type: 'error', message: res.error || 'OTAĞA QOŞULMAQ MÜMKÜN OLMADI' });
+        setNotification({ type: 'error', message: res.error || 'Otağa qoşulmaq mümkün olmadı' });
       }
     } catch {
       setIsJoining(false);
-      setNotification({ type: 'error', message: 'ŞƏBƏKƏ XƏTASI BAŞ VERDİ' });
+      setNotification({ type: 'error', message: 'Şəbəkə xətası baş verdi' });
     }
   };
 
@@ -103,43 +103,42 @@ export default function RoomPage() {
 
   // Fast Join card with pre-filled room code
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-8 font-mono">
-      <div className="w-full max-w-md border border-white/[0.1] bg-[#0E1015] p-6 sm:p-8 crosshair-corner">
-        <div className="border-b border-white/[0.08] pb-4 mb-6">
-          <div className="flex items-center gap-2 text-[10px] tracking-tracked text-[#D4FF00] mb-1">
-            <span className="inline-block h-1.5 w-1.5 bg-[#D4FF00]" />
-            <span>CHANNEL_INVITATION // P2P_HOOK</span>
-          </div>
-          <h2 className="text-2xl font-black font-display text-white uppercase">
-            <span className="text-[#D4FF00] font-mono">{roomCode}</span> KANALINA QOŞULUN
+    <div className="flex-1 flex items-center justify-center px-4 py-8 select-none">
+      <div className="w-full max-w-md apple-glass rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
+        <div className="text-center mb-6">
+          <span className="text-xs font-semibold text-[#007AFF] uppercase tracking-wider block mb-1">
+            Dəvət Olundunuz
+          </span>
+          <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
+            <span className="text-[#007AFF]">{roomCode}</span> Otağına Qoşulun
           </h2>
-          <p className="mt-1 text-xs text-zinc-400">
-            Operator adınızı və ikonunuzu seçib transmissiyaya qoşulun.
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            Adınızı və avatarınızı seçib dərhal oyuna başlayın.
           </p>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-[#12141A] border border-white/[0.08] p-3">
-            <label className="block text-[10px] tracking-tracked text-zinc-500 mb-1">
-              OPERATOR CALLSIGN:
+          <div className="rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5 focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/20 transition-all">
+            <label className="block text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">
+              Adınız
             </label>
             <input
               type="text"
               maxLength={18}
-              placeholder="MƏS: ANAR, NİGAR..."
+              placeholder="Məs: Anar, Nigar..."
               value={name}
               onFocus={() => tactileAudio.playFocusClick()}
               onChange={(e) => {
                 tactileAudio.playKeyStroke();
                 setName(e.target.value);
               }}
-              className="w-full bg-transparent font-mono text-base font-bold text-white placeholder-zinc-700 focus:outline-none"
+              className="w-full bg-transparent text-base font-semibold text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-700 focus:outline-none"
             />
           </div>
 
-          <div className="bg-[#12141A] border border-white/[0.08] p-3">
-            <label className="block text-[10px] tracking-tracked text-zinc-500 mb-2">
-              OPERATOR ICON:
+          <div className="rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5">
+            <label className="block text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
+              Avatar
             </label>
             <div className="grid grid-cols-8 gap-1.5">
               {PLAYER_AVATARS.map((av) => (
@@ -150,10 +149,10 @@ export default function RoomPage() {
                     tactileAudio.playKeyStroke();
                     setAvatar(av);
                   }}
-                  className={`h-9 border text-base flex items-center justify-center transition hardware-key cursor-pointer ${
+                  className={`h-9 w-9 rounded-xl text-lg flex items-center justify-center transition cursor-pointer ${
                     avatar === av
-                      ? 'border-[#D4FF00] bg-[#181B22]'
-                      : 'border-white/[0.06] bg-[#090A0C]'
+                      ? 'bg-black/[0.08] dark:bg-white/[0.15] scale-110 shadow-sm'
+                      : 'hover:bg-black/[0.04]'
                   }`}
                 >
                   {av}
@@ -166,20 +165,19 @@ export default function RoomPage() {
             <button
               onClick={handleManualJoin}
               disabled={isJoining}
-              className="w-full py-3.5 bg-[#D4FF00] hover:bg-[#DCFF33] text-black font-mono font-bold text-xs uppercase tracking-tracked shadow-hard-lime hardware-key cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-full bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-[0_6px_20px_rgba(0,122,255,0.3)] transition-all cursor-pointer disabled:opacity-50"
             >
-              <LogIn className="h-4 w-4" />
-              <span>{isJoining ? 'QOŞULUR...' : 'KANALA DAXİL OL // CONNECT'}</span>
+              {isJoining ? 'Qoşulur...' : 'Otağa Daxil Ol'}
             </button>
           </div>
 
           <div className="text-center pt-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white transition"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition"
             >
               <ArrowLeft className="h-3 w-3" />
-              <span>ƏSAS KONSOLA QAYIT</span>
+              <span>Əsas səhifəyə qayıt</span>
             </Link>
           </div>
         </div>

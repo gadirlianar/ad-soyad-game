@@ -1,15 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Crown,
-  Share2,
-  Plus,
-  Trash2,
-  QrCode,
-  Check,
-  Zap,
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Share2, QrCode, Plus, Trash2, Crown } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import {
   DURATION_OPTIONS,
@@ -38,7 +31,6 @@ export const LobbyView: React.FC = () => {
   const playersList = Object.values(room.players);
   const currentPlayer = room.players[playerId];
   const isHost = Boolean(room.hostId === playerId || currentPlayer?.isHost || playersList.length === 1);
-  const allPlayersReady = playersList.every((p) => p.isReady || p.isHost);
   const canStartGame = isHost && playersList.length >= 1;
 
   const handleToggleReady = () => {
@@ -59,10 +51,10 @@ export const LobbyView: React.FC = () => {
       await navigator.clipboard.writeText(url);
       setCopiedLink(true);
       tactileAudio.playKeyStroke();
-      setNotification({ type: 'success', message: 'DƏVƏT LİNKİ KOPYALANDI // PAYLAŞIN' });
+      setNotification({ type: 'success', message: 'Dəvət linki kopyalandı' });
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
-      setNotification({ type: 'info', message: `FREKANS KODU: ${room.code}` });
+      setNotification({ type: 'info', message: `Otaq kodu: ${room.code}` });
     }
   };
 
@@ -83,10 +75,6 @@ export const LobbyView: React.FC = () => {
     tactileAudio.playKeyStroke();
     const alphabet = alphabetType === 'az' ? AZERBAIJANI_ALPHABET : ENGLISH_ALPHABET;
     sendGameAction('update_settings', { settings: { alphabet } });
-    setNotification({
-      type: 'info',
-      message: alphabetType === 'az' ? 'ƏLİFBA: AZƏRBAYCAN SEÇİLDİ' : 'ƏLİFBA: ENGLİSH SEÇİLDİ',
-    });
   };
 
   const handleToggleCategory = (cat: Category) => {
@@ -98,7 +86,7 @@ export const LobbyView: React.FC = () => {
     let updated: Category[];
     if (exists) {
       if (currentCats.length <= 3) {
-        setNotification({ type: 'warning', message: 'MİNİMUM 3 KANAL AKTİV QALMALIDIR' });
+        setNotification({ type: 'warning', message: 'Ən azı 3 kateqoriya aktiv qalmalıdır' });
         return;
       }
       updated = currentCats.filter((c) => c.id !== cat.id);
@@ -127,7 +115,6 @@ export const LobbyView: React.FC = () => {
     });
 
     setCustomCategoryInput('');
-    setNotification({ type: 'success', message: `KANAL ƏLAVƏ EDİLDİ: "${label}"` });
   };
 
   const handleSaveProfile = () => {
@@ -138,220 +125,197 @@ export const LobbyView: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6">
+    <div className="w-full max-w-4xl mx-auto px-4 py-8 select-none">
       <QRCodeModal isOpen={isQrOpen} onClose={() => setIsQrOpen(false)} roomCode={room.code} />
 
-      {/* Top Station Command Strip */}
-      <div className="border border-white/[0.1] bg-[#0E1015] p-5 sm:p-6 mb-6 crosshair-corner">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 font-mono text-[10px] tracking-tracked text-zinc-500 mb-1">
-              <span className="inline-block h-1.5 w-1.5 bg-[#D4FF00] shadow-[0_0_6px_#D4FF00]" />
-              <span>STATION_CONTROL // FREQUENCY_ROOM: {room.code}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl font-extrabold font-display tracking-tighter text-white uppercase">
-              OPERATOR GÖZLƏMƏ STANSİYASI
-            </h1>
-
-            <p className="text-[11px] font-mono text-zinc-400 mt-1">
-              İştirakçıları dəvət edin, parametrləri tənzimləyin və hazırlıq statusunu kilidləyin.
-            </p>
+      {/* Top Header Card */}
+      <div className="apple-glass rounded-3xl p-6 sm:p-8 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-[#34C759]" />
+            <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+              Otaq: <span className="font-semibold text-neutral-900 dark:text-white">{room.code}</span>
+            </span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+            Oyun Gözləmə Otağı
+          </h1>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            Dostlarınızı dəvət edin və oyuna başlayın.
+          </p>
+        </div>
 
-          {/* Quick Frequency Actions */}
-          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleCopyInviteLink}
+            className="rounded-full px-4 py-2 bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-xs font-semibold text-neutral-800 dark:text-neutral-200 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span>{copiedLink ? 'Kopyalandı' : 'Dəvət Et'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              tactileAudio.playKeyStroke();
+              setIsQrOpen(true);
+            }}
+            className="rounded-full px-4 py-2 bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-xs font-semibold text-neutral-800 dark:text-neutral-200 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            <span>QR Kod</span>
+          </button>
+
+          <button
+            onClick={handleToggleReady}
+            className={`rounded-full px-5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+              currentPlayer?.isReady
+                ? 'bg-[#34C759] text-white shadow-sm'
+                : 'bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300'
+            }`}
+          >
+            {currentPlayer?.isReady ? 'Hazırsınız' : 'Hazıram De'}
+          </button>
+
+          {isHost && (
             <button
-              onClick={handleCopyInviteLink}
-              className="flex items-center gap-2 border border-white/[0.1] bg-[#12141A] hover:bg-[#181B22] px-3.5 py-2.5 font-mono text-xs text-white tracking-tracked hardware-key cursor-pointer"
+              onClick={handleStartGame}
+              disabled={!canStartGame}
+              className="rounded-full px-6 py-2 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-[0_4px_14px_rgba(0,122,255,0.3)] transition-all cursor-pointer disabled:opacity-40"
             >
-              <Share2 className="h-3.5 w-3.5 text-[#D4FF00]" />
-              <span>{copiedLink ? 'KOPYALANDI' : 'DƏVƏT LİNKİ'}</span>
+              Oyunu Başlat
             </button>
-
-            <button
-              onClick={() => {
-                tactileAudio.playKeyStroke();
-                setIsQrOpen(true);
-              }}
-              className="flex items-center gap-2 border border-white/[0.1] bg-[#12141A] hover:bg-[#181B22] px-3.5 py-2.5 font-mono text-xs text-white tracking-tracked hardware-key cursor-pointer"
-            >
-              <QrCode className="h-3.5 w-3.5 text-[#FF4800]" />
-              <span>QR_SCAN</span>
-            </button>
-
-            {/* Ready Toggle Button */}
-            <button
-              onClick={handleToggleReady}
-              className={`flex items-center gap-2 px-4 py-2.5 font-mono text-xs font-bold tracking-tracked border hardware-key cursor-pointer ${
-                currentPlayer?.isReady
-                  ? 'bg-[#D4FF00] text-black border-[#D4FF00] shadow-hard-lime'
-                  : 'bg-[#181B22] text-[#FF4800] border-[#FF4800]/50'
-              }`}
-            >
-              <span className={`h-2 w-2 ${currentPlayer?.isReady ? 'bg-black' : 'bg-[#FF4800]'}`} />
-              <span>{currentPlayer?.isReady ? 'READY // LATCHED' : 'HAZIRAM DE'}</span>
-            </button>
-
-            {/* Host Start Game Trigger */}
-            {isHost && (
-              <button
-                onClick={handleStartGame}
-                disabled={!canStartGame}
-                className="bg-[#FF4800] hover:bg-[#FF5E1E] text-black font-mono font-black text-xs uppercase px-5 py-2.5 tracking-tracked shadow-hard-orange hardware-key cursor-pointer disabled:opacity-40"
-              >
-                OYUNU BAŞLAT // TRANSMİSSİYA
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Connected Operator Bays */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Operator Slot Bays Rack */}
-          <div className="border border-white/[0.1] bg-[#0E1015] p-5 crosshair-corner">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-4 font-mono text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-white font-bold uppercase">OPERATORLAR KONSOLU</span>
-                <span className="text-zinc-500">[{playersList.length} AKTİV]</span>
-              </div>
-              <span className="text-[10px] text-zinc-500 tracking-tracked">CHANNEL: P2P_BROADCAST</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Players List */}
+        <div className="md:col-span-2 space-y-6">
+          <div className="apple-glass rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                İştirakçılar ({playersList.length})
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {playersList.map((p, idx) => {
+              {playersList.map((p) => {
                 const isMe = p.id === playerId;
                 return (
                   <div
                     key={p.id}
-                    className={`border p-4 bg-[#12141A] transition flex items-center justify-between ${
-                      p.isReady
-                        ? 'border-[#D4FF00]/40 shadow-[0_0_8px_rgba(212,255,0,0.08)]'
-                        : 'border-white/[0.08]'
-                    }`}
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.03] dark:border-white/[0.04]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center bg-[#090A0C] border border-white/[0.1] text-2xl">
-                        {p.avatar}
-                      </div>
-
+                      <span className="text-2xl">{p.avatar}</span>
                       <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 font-mono text-xs">
-                          <span className="font-bold text-white tracking-tight">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-neutral-900 dark:text-white">
                             {p.name}
                           </span>
                           {p.isHost && (
-                            <span className="bg-[#FF4800]/20 text-[#FF4800] px-1 text-[8px] font-mono font-bold flex items-center gap-0.5">
-                              <Crown className="h-2 w-2" /> HOST
+                            <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
+                              <Crown className="h-3 w-3" />
                             </span>
                           )}
-                          {isMe && <span className="text-zinc-500 text-[9px]">[YOU]</span>}
+                          {isMe && <span className="text-[10px] text-neutral-400">· Sən</span>}
                         </div>
-
-                        <span className="font-mono text-[9px] text-zinc-500 tracking-widest mt-0.5">
-                          SLOT_0{idx + 1} // LATENCY: {14 + (p.name.length % 5)}MS
+                        <span className="text-[11px] text-neutral-400">
+                          {p.isReady ? 'Hazırdır' : 'Gözləyir'}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1 font-mono text-[10px]">
-                      <span
-                        className={`font-bold px-2 py-0.5 border ${
-                          p.isReady
-                            ? 'bg-[#D4FF00]/15 text-[#D4FF00] border-[#D4FF00]/40'
-                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                        }`}
-                      >
-                        {p.isReady ? 'READY' : 'STANDBY'}
-                      </span>
-                    </div>
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        p.isReady ? 'bg-[#34C759]' : 'bg-neutral-300 dark:bg-neutral-700'
+                      }`}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Profile Modification Bay */}
-          <div className="border border-white/[0.1] bg-[#0E1015] p-5 crosshair-corner font-mono">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-4 text-xs">
-              <span className="text-white font-bold uppercase">ÖZ PROFİL PARAMETRLƏRİN</span>
+          {/* Profile Edit Card */}
+          <div className="apple-glass rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                Profiliniz
+              </h3>
               <button
                 onClick={() => {
                   tactileAudio.playKeyStroke();
                   setIsEditingProfile(!isEditingProfile);
                 }}
-                className="text-[10px] text-[#D4FF00] hover:underline cursor-pointer"
+                className="text-xs font-medium text-[#007AFF] hover:underline cursor-pointer"
               >
-                {isEditingProfile ? '[REVERT_EDITS]' : '[DƏYİŞDİR]'}
+                {isEditingProfile ? 'Bağla' : 'Dəyişdir'}
               </button>
             </div>
 
             {isEditingProfile ? (
               <div className="space-y-3">
-                <div>
-                  <label className="text-[10px] text-zinc-500 tracking-tracked block mb-1">OPERATOR_CALLSIGN:</label>
-                  <input
-                    type="text"
-                    maxLength={18}
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    className="w-full bg-[#12141A] border border-white/[0.1] px-3 py-2 text-white font-bold text-sm focus:border-[#D4FF00] focus:outline-none"
-                  />
+                <input
+                  type="text"
+                  maxLength={18}
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  className="w-full rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none"
+                />
+                <div className="grid grid-cols-8 gap-1.5">
+                  {PLAYER_AVATARS.map((av) => (
+                    <button
+                      key={av}
+                      type="button"
+                      onClick={() => {
+                        tactileAudio.playKeyStroke();
+                        setTempAvatar(av);
+                      }}
+                      className={`h-8 w-8 rounded-xl text-base flex items-center justify-center transition cursor-pointer ${
+                        tempAvatar === av
+                          ? 'bg-black/[0.08] dark:bg-white/[0.15]'
+                          : 'hover:bg-black/[0.04]'
+                      }`}
+                    >
+                      {av}
+                    </button>
+                  ))}
                 </div>
-
-                <div>
-                  <label className="text-[10px] text-zinc-500 tracking-tracked block mb-1">OPERATOR_ICON:</label>
-                  <div className="grid grid-cols-8 gap-1">
-                    {PLAYER_AVATARS.map((av) => (
-                      <button
-                        key={av}
-                        type="button"
-                        onClick={() => {
-                          tactileAudio.playKeyStroke();
-                          setTempAvatar(av);
-                        }}
-                        className={`h-9 border text-lg flex items-center justify-center cursor-pointer ${
-                          tempAvatar === av ? 'border-[#D4FF00] bg-[#161922]' : 'border-white/[0.06] bg-[#090A0C]'
-                        }`}
-                      >
-                        {av}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <button
                   onClick={handleSaveProfile}
-                  className="bg-[#D4FF00] text-black font-bold px-4 py-2 text-xs uppercase tracking-tracked cursor-pointer hardware-key mt-2"
+                  className="rounded-full bg-[#007AFF] text-white text-xs font-semibold px-4 py-2 cursor-pointer shadow-sm"
                 >
-                  SAVE PROFILE // COMMIT
+                  Yadda Saxla
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 bg-[#12141A] border border-white/[0.06] p-3">
+              <div className="flex items-center gap-3">
                 <span className="text-2xl">{playerAvatar}</span>
-                <div>
-                  <span className="text-sm font-bold text-white block">{playerName}</span>
-                  <span className="text-[9px] text-zinc-500 tracking-widest">CALLSIGN IDENTIFIER: LATCHED</span>
-                </div>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  {playerName}
+                </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right 1 Col: Hardware Settings Deck (Host Authority) */}
-        <div className="border border-white/[0.1] bg-[#0E1015] p-5 crosshair-corner font-mono space-y-6">
-          <div className="border-b border-white/[0.08] pb-3 flex items-center justify-between">
-            <span className="text-white font-bold text-xs uppercase">OTAQ TƏNZİMLƏMƏLƏRİ</span>
-            <span className="text-[9px] text-zinc-500">{isHost ? 'HOST_AUTHORITY' : 'READ_ONLY'}</span>
+        {/* Right 1 Col: Apple Settings Group */}
+        <div className="apple-glass rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-6">
+          <div className="border-b border-black/[0.04] dark:border-white/[0.06] pb-3">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              Oyun Qaydaları
+            </h3>
+            <span className="text-[11px] text-neutral-400">
+              {isHost ? 'Yalnız host dəyişə bilər' : 'Host tərəfindən idarə olunur'}
+            </span>
           </div>
 
-          {/* Round Duration Rotary Buttons */}
+          {/* Duration Segmented Control */}
           <div>
-            <label className="text-[10px] text-zinc-400 tracking-tracked block mb-2">
-              RAUND MÜDDƏTİ:
+            <label className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
+              Raund Müddəti
             </label>
             <div className="grid grid-cols-3 gap-1.5">
               {DURATION_OPTIONS.map((opt) => (
@@ -359,22 +323,22 @@ export const LobbyView: React.FC = () => {
                   key={opt.value}
                   disabled={!isHost}
                   onClick={() => handleUpdateDuration(opt.value)}
-                  className={`py-2 px-1 text-center border text-[11px] font-bold tracking-tight cursor-pointer hardware-key ${
+                  className={`py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                     room.settings.roundDuration === opt.value
-                      ? 'border-[#D4FF00] bg-[#181B22] text-[#D4FF00]'
-                      : 'border-white/[0.08] bg-[#12141A] text-zinc-400 hover:text-white'
+                      ? 'bg-[#007AFF] text-white shadow-sm font-semibold'
+                      : 'bg-black/[0.02] dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-400'
                   }`}
                 >
-                  {opt.value === 0 ? 'LIMITLESS' : `${opt.value}S`}
+                  {opt.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Total Rounds Selector */}
+          {/* Rounds Segmented Control */}
           <div>
-            <label className="text-[10px] text-zinc-400 tracking-tracked block mb-2">
-              RAUND SAYI:
+            <label className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
+              Raund Sayı
             </label>
             <div className="grid grid-cols-4 gap-1.5">
               {ROUND_OPTIONS.map((r) => (
@@ -382,110 +346,87 @@ export const LobbyView: React.FC = () => {
                   key={r}
                   disabled={!isHost}
                   onClick={() => handleUpdateRounds(r)}
-                  className={`py-2 text-center border text-xs font-bold cursor-pointer hardware-key ${
+                  className={`py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                     room.settings.totalRounds === r
-                      ? 'border-[#D4FF00] bg-[#181B22] text-[#D4FF00]'
-                      : 'border-white/[0.08] bg-[#12141A] text-zinc-400 hover:text-white'
+                      ? 'bg-[#007AFF] text-white shadow-sm font-semibold'
+                      : 'bg-black/[0.02] dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-400'
                   }`}
                 >
-                  0{r}
+                  {r}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Alphabet Mechanical Toggle */}
+          {/* Alphabet Selector */}
           <div>
-            <label className="text-[10px] text-zinc-400 tracking-tracked block mb-2">
-              ƏLİFBA SİSTEMİ:
+            <label className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
+              Əlifba
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 disabled={!isHost}
                 onClick={() => handleToggleAlphabet('az')}
-                className={`py-2 text-center border text-xs font-bold cursor-pointer hardware-key ${
+                className={`py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                   room.settings.alphabet.length === AZERBAIJANI_ALPHABET.length
-                    ? 'border-[#D4FF00] bg-[#181B22] text-[#D4FF00]'
-                    : 'border-white/[0.08] bg-[#12141A] text-zinc-400 hover:text-white'
+                    ? 'bg-[#007AFF] text-white shadow-sm font-semibold'
+                    : 'bg-black/[0.02] dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-400'
                 }`}
               >
-                AZ (30 HƏRF)
+                Azərbaycan
               </button>
               <button
                 disabled={!isHost}
                 onClick={() => handleToggleAlphabet('en')}
-                className={`py-2 text-center border text-xs font-bold cursor-pointer hardware-key ${
+                className={`py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                   room.settings.alphabet.length === ENGLISH_ALPHABET.length
-                    ? 'border-[#D4FF00] bg-[#181B22] text-[#D4FF00]'
-                    : 'border-white/[0.08] bg-[#12141A] text-zinc-400 hover:text-white'
+                    ? 'bg-[#007AFF] text-white shadow-sm font-semibold'
+                    : 'bg-black/[0.02] dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-400'
                 }`}
               >
-                EN (26 CHAR)
+                English
               </button>
             </div>
           </div>
 
-          {/* Active Categories Channel Grid */}
+          {/* Categories */}
           <div>
-            <div className="flex items-center justify-between text-[10px] text-zinc-400 tracking-tracked mb-2">
-              <span>AKTİV KANALLAR ({room.settings.categories.length}):</span>
-              <span className="text-zinc-600">MIN 3</span>
-            </div>
-
+            <label className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
+              Kateqoriyalar ({room.settings.categories.length})
+            </label>
             <div className="flex flex-wrap gap-1.5">
               {room.settings.categories.map((c) => (
                 <button
                   key={c.id}
                   disabled={!isHost}
                   onClick={() => handleToggleCategory(c)}
-                  className="flex items-center gap-1.5 border border-white/[0.1] bg-[#12141A] px-2.5 py-1 text-[11px] text-white hover:border-[#FF4800] hover:text-[#FF4800] transition cursor-pointer"
-                  title="Kanalı söndür"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-black/[0.03] dark:bg-white/[0.06] text-neutral-800 dark:text-neutral-200 hover:bg-[#FF3B30]/10 hover:text-[#FF3B30] transition cursor-pointer"
                 >
                   <span>{c.azLabel}</span>
-                  {isHost && <Trash2 className="h-3 w-3 text-zinc-600 hover:text-[#FF4800]" />}
+                  {isHost && <Trash2 className="h-3 w-3 text-neutral-400" />}
                 </button>
               ))}
             </div>
 
             {/* Quick Add Custom Category */}
             {isHost && (
-              <div className="mt-4 pt-3 border-t border-white/[0.06]">
+              <div className="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.06]">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     maxLength={15}
-                    placeholder="YENİ KANAL ADI..."
+                    placeholder="Yeni kateqoriya..."
                     value={customCategoryInput}
                     onChange={(e) => setCustomCategoryInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
-                    className="flex-1 bg-[#12141A] border border-white/[0.1] px-2.5 py-1.5 text-xs text-white focus:border-[#D4FF00] focus:outline-none"
+                    className="flex-1 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] px-3 py-1.5 text-xs text-neutral-900 dark:text-white focus:outline-none"
                   />
                   <button
                     onClick={handleAddCustomCategory}
-                    className="bg-[#D4FF00] text-black px-3 py-1.5 text-xs font-bold hardware-key cursor-pointer"
+                    className="h-8 w-8 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] flex items-center justify-center text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.08] transition cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
-                </div>
-
-                {/* Suggested Categories */}
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {SUGGESTED_CUSTOM_CATEGORIES.filter(
-                    (s) => !room.settings.categories.some((c) => c.id === s.id)
-                  ).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        tactileAudio.playKeyStroke();
-                        sendGameAction('update_settings', {
-                          settings: { categories: [...room.settings.categories, s] },
-                        });
-                      }}
-                      className="text-[9px] text-zinc-500 border border-white/[0.04] bg-[#090A0C] px-1.5 py-0.5 hover:text-[#D4FF00] hover:border-[#D4FF00]/40"
-                    >
-                      +{s.azLabel}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}

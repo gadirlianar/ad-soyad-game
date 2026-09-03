@@ -9,23 +9,23 @@ interface SpectatorBannerProps {
 
 export const SpectatorBanner: React.FC<SpectatorBannerProps> = ({ currentRound }) => {
   return (
-    <div className="mb-6 flex items-center justify-between border border-amber-500/40 bg-[#0E1015] p-3 font-mono">
+    <div className="w-full max-w-2xl mb-6 rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-amber-500/10 text-amber-400 border border-amber-500/30">
-          <Eye className="h-4 w-4 animate-pulse" />
+        <div className="h-7 w-7 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
+          <Eye className="h-3.5 w-3.5" />
         </div>
         <div>
-          <h4 className="text-xs font-bold text-amber-300 uppercase tracking-tracked">
-            STATUS: SPECTATOR_PASSIVE // OBSERVER_MODE
+          <h4 className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+            İzləyici Rejimi
           </h4>
-          <p className="text-[11px] text-zinc-400">
-            Aktiv raund davam edir. Növbəti raund (0{currentRound + 1}) başladığında avtomatik daxil olacaqsınız.
+          <p className="text-[11px] text-neutral-400">
+            Aktiv raund bitdikdən sonra avtomatik olaraq növbəti raunda qoşulacaqsınız.
           </p>
         </div>
       </div>
-      <div className="hidden sm:flex items-center gap-1.5 border border-white/[0.1] bg-[#12141A] px-2.5 py-1 text-[10px] text-zinc-400">
-        <span>CURRENT_ROUND: 0{currentRound}</span>
-      </div>
+      <span className="text-xs font-medium text-neutral-500 tabular-nums">
+        Raund {currentRound}
+      </span>
     </div>
   );
 };

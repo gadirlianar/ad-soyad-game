@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { PLAYER_AVATARS } from '@/lib/constants';
 import { tactileAudio } from '@/lib/audio';
@@ -32,11 +33,11 @@ export default function Home() {
   const handleCreateRoom = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setNotification({ type: 'warning', message: 'OPERATOR ADINI DAXİL EDİN' });
+      setNotification({ type: 'warning', message: 'Zəhmət olmasa adınızı qeyd edin' });
       return;
     }
 
-    tactileAudio.playStopBuzzer();
+    tactileAudio.playKeyStroke();
     setIsLoading(true);
     setPlayerProfile(trimmedName, avatar);
 
@@ -54,12 +55,12 @@ export default function Home() {
       } else {
         setNotification({
           type: 'error',
-          message: res.error || 'OTAQ İNİSİALİZASİYA EDİLMƏDİ',
+          message: res.error || 'Otaq yaradılarkən xəta baş verdi',
         });
       }
     } catch {
       setIsLoading(false);
-      setNotification({ type: 'error', message: 'ŞƏBƏKƏ XƏTASI BAŞ VERDİ' });
+      setNotification({ type: 'error', message: 'Şəbəkə xətası baş verdi' });
     }
   };
 
@@ -68,15 +69,15 @@ export default function Home() {
     const trimmedCode = joinCode.trim().toUpperCase();
 
     if (!trimmedName) {
-      setNotification({ type: 'warning', message: 'OPERATOR ADINI DAXİL EDİN' });
+      setNotification({ type: 'warning', message: 'Zəhmət olmasa adınızı qeyd edin' });
       return;
     }
     if (!trimmedCode || trimmedCode.length < 4) {
-      setNotification({ type: 'warning', message: 'DÜZGÜN 6-XANALI FREKANS KODU DAXİL EDİN' });
+      setNotification({ type: 'warning', message: 'Düzgün 6-rəqəmli otaq kodunu daxil edin' });
       return;
     }
 
-    tactileAudio.playFocusClick();
+    tactileAudio.playKeyStroke();
     setIsLoading(true);
     setPlayerProfile(trimmedName, avatar);
 
@@ -94,105 +95,87 @@ export default function Home() {
       } else {
         setNotification({
           type: 'error',
-          message: res.error || 'OTAĞA QOŞULMAQ MÜMKÜN OLMADI',
+          message: res.error || 'Otağa qoşulmaq mümkün olmadı',
         });
       }
     } catch {
       setIsLoading(false);
-      setNotification({ type: 'error', message: 'ŞƏBƏKƏ XƏTASI BAŞ VERDİ' });
+      setNotification({ type: 'error', message: 'Şəbəkə xətası baş verdi' });
     }
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] px-3 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        {/* Editorial Swiss Top Header Strip */}
-        <div className="border border-white/[0.1] bg-[#0E1015] p-6 sm:p-10 mb-6 crosshair-corner">
-          <div className="flex items-center gap-3 font-mono text-[10px] tracking-tracked text-zinc-500 mb-3 uppercase">
-            <span className="inline-block h-2 w-2 bg-[#D4FF00] shadow-[0_0_6px_#D4FF00]" />
-            <span>TERMINAL // MODEL_TE_4.1 // SYSTEM_STANDBY</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display tracking-tighter text-white uppercase leading-[0.95]">
-            AD // SOYAD <br />
-            <span className="text-[#D4FF00]">ŞƏHƏR // ÖLKƏ</span>
+    <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 select-none">
+      <div className="w-full max-w-md mx-auto text-center">
+        {/* Apple Serene Hero Typography */}
+        <div className="mb-8">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-3">
+            Ad, Soyad
           </h1>
-
-          <p className="mt-4 text-xs sm:text-sm font-mono text-zinc-400 max-w-2xl leading-relaxed">
-            Klassik söz kateqoriyası oyununun hardware-inspirasiyalı taktiki multiplayer platforması.
-            Split-flap hərf barabanı, modular sintezator kanalları və Bloomberg-səviyyəli real vaxt konsensus matrisi.
+          <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+            Dostlarınızla real vaxtda söz kateqoriyası oyunu. Sadə, sürətli və estetik.
           </p>
-
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-[10px] font-mono text-zinc-500 pt-4 border-t border-white/[0.06]">
-            <span>ENGINE: HYBRID_AUTHORITATIVE</span>
-            <span>//</span>
-            <span>TELEMETRY: P2P_RADAR</span>
-            <span>//</span>
-            <span>CHANNELS: 07_DEFAULT</span>
-          </div>
         </div>
 
-        {/* Master Control Deck Frame */}
-        <div className="border border-white/[0.1] bg-[#0E1015] p-4 sm:p-8 crosshair-corner">
-          {/* Hardware Rocker Deck Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 mb-6 p-1 bg-[#090A0C] border border-white/[0.08] font-mono text-xs">
+        {/* Cupertino Frosted Control Card */}
+        <div className="apple-glass rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.4)]">
+          {/* Segmented Control */}
+          <div className="flex p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl mb-6 gap-1">
             <button
               onClick={() => {
                 tactileAudio.playKeyStroke();
                 setActiveTab('create');
               }}
-              className={`py-3 px-4 font-bold tracking-tracked transition cursor-pointer select-none ${
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'create'
-                  ? 'bg-[#181B22] text-[#D4FF00] border border-[#D4FF00]/40 shadow-sm'
-                  : 'text-zinc-500 hover:text-white'
+                  ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
               }`}
             >
-              [DECK_A: YENİ OTAQ YARAT]
+              Yeni Otaq
             </button>
             <button
               onClick={() => {
                 tactileAudio.playKeyStroke();
                 setActiveTab('join');
               }}
-              className={`py-3 px-4 font-bold tracking-tracked transition cursor-pointer select-none ${
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'join'
-                  ? 'bg-[#181B22] text-[#D4FF00] border border-[#D4FF00]/40 shadow-sm'
-                  : 'text-zinc-500 hover:text-white'
+                  ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
               }`}
             >
-              [DECK_B: FREKANSA QOŞUL]
+              Koda Qoşul
             </button>
           </div>
 
-          {/* Form Channels */}
-          <div className="space-y-4">
-            {/* Operator Identifier Input Bay */}
-            <div className="bg-[#12141A] border border-white/[0.08] p-4 focus-within:border-[#D4FF00] transition-colors">
-              <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-2">
-                <span>INPUT_BAY // OPERATOR_CALLSIGN</span>
-                <span>MAX_18_CHAR</span>
-              </div>
+          {/* Form Fields */}
+          <div className="space-y-4 text-left">
+            {/* Name Input Field */}
+            <div className="rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5 focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/20 transition-all">
+              <label className="block text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">
+                Adınız
+              </label>
               <input
                 type="text"
                 maxLength={18}
-                placeholder="MƏS: ANAR, NİGAR, RƏŞAD..."
+                placeholder="Məs: Anar, Nigar..."
                 value={name}
                 onFocus={() => tactileAudio.playFocusClick()}
                 onChange={(e) => {
                   tactileAudio.playKeyStroke();
                   setName(e.target.value);
                 }}
-                className="w-full bg-transparent font-mono text-xl sm:text-2xl font-bold text-white placeholder-zinc-700 focus:outline-none tracking-tight selection:bg-[#FF4800] selection:text-black"
+                className="w-full bg-transparent text-base font-semibold text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-700 focus:outline-none"
               />
             </div>
 
-            {/* Hardware Pad Avatar Matrix */}
-            <div className="bg-[#12141A] border border-white/[0.08] p-4">
-              <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-3">
-                <span>PAD_MATRIX // OPERATOR_ICON</span>
-                <span className="text-zinc-300">SELECTED: {avatar}</span>
-              </div>
-              <div className="grid grid-cols-8 gap-1.5 sm:gap-2">
+            {/* Avatar Selector */}
+            <div className="rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5">
+              <label className="block text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
+                Avatar
+              </label>
+              <div className="grid grid-cols-8 gap-1.5">
                 {PLAYER_AVATARS.map((av) => (
                   <button
                     key={av}
@@ -201,10 +184,10 @@ export default function Home() {
                       tactileAudio.playKeyStroke();
                       setAvatar(av);
                     }}
-                    className={`h-10 sm:h-11 border text-lg sm:text-xl flex items-center justify-center transition-all hardware-key cursor-pointer ${
+                    className={`h-9 w-9 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer ${
                       avatar === av
-                        ? 'border-[#D4FF00] bg-[#1E222D] shadow-[0_0_10px_rgba(212,255,0,0.3)]'
-                        : 'border-white/[0.06] bg-[#090A0C] hover:border-white/[0.2] hover:bg-[#16181F]'
+                        ? 'bg-black/[0.08] dark:bg-white/[0.15] scale-110 shadow-sm'
+                        : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
                     }`}
                   >
                     {av}
@@ -213,91 +196,49 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Frequency Room Code Input (If Join Tab) */}
+            {/* Room Code Field (If Join) */}
             {activeTab === 'join' && (
-              <div className="bg-[#12141A] border border-white/[0.08] p-4 focus-within:border-[#D4FF00] transition-colors">
-                <div className="flex items-center justify-between font-mono text-[10px] tracking-tracked text-zinc-500 mb-2">
-                  <span>FREQUENCY_CHANNEL // 6X_ALPHA_CODE</span>
-                  <span>HEX_SPEC</span>
-                </div>
+              <div className="rounded-2xl bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-3.5 focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/20 transition-all">
+                <label className="block text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">
+                  6-Rəqəmli Otaq Kodu
+                </label>
                 <input
                   type="text"
                   maxLength={6}
-                  placeholder="MƏS: AZ8K2P"
+                  placeholder="Məs: AZ8K2P"
                   value={joinCode}
                   onFocus={() => tactileAudio.playFocusClick()}
                   onChange={(e) => {
                     tactileAudio.playKeyStroke();
                     setJoinCode(e.target.value.toUpperCase());
                   }}
-                  className="w-full bg-transparent font-mono text-center text-3xl font-extrabold tracking-widest text-[#D4FF00] uppercase placeholder-zinc-700 focus:outline-none"
+                  className="w-full bg-transparent text-center text-xl font-bold tracking-widest text-[#007AFF] uppercase placeholder-neutral-300 dark:placeholder-neutral-700 focus:outline-none"
                 />
               </div>
             )}
 
-            {/* Industrial Execution Switch */}
+            {/* Primary Action Button */}
             <div className="pt-2">
               {activeTab === 'create' ? (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleCreateRoom}
                   disabled={isLoading}
-                  className="w-full py-4 px-6 bg-[#FF4800] hover:bg-[#FF5E1E] text-black font-mono font-black text-sm sm:text-base tracking-tracked uppercase shadow-hard-orange hardware-key cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-6 rounded-full bg-[#007AFF] hover:bg-[#0062CC] text-white text-sm font-semibold shadow-[0_6px_20px_rgba(0,122,255,0.3)] transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <span>{isLoading ? 'İNTİALİZASİYA EDİLİR...' : 'OTAQ YARAT // TRANSMİSSİYANI BAŞLAT'}</span>
-                </button>
+                  {isLoading ? 'Otaq Hazırlanır...' : 'Otaq Yarat'}
+                </motion.button>
               ) : (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleJoinRoom}
                   disabled={isLoading}
-                  className="w-full py-4 px-6 bg-[#D4FF00] hover:bg-[#DCFF33] text-black font-mono font-black text-sm sm:text-base tracking-tracked uppercase shadow-hard-lime hardware-key cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-6 rounded-full bg-[#007AFF] hover:bg-[#0062CC] text-white text-sm font-semibold shadow-[0_6px_20px_rgba(0,122,255,0.3)] transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <span>{isLoading ? 'QOŞULUR...' : 'FREKANSA QOŞUL // LINK ENGAGE'}</span>
-                </button>
+                  {isLoading ? 'Qoşulur...' : 'Otağa Daxil Ol'}
+                </motion.button>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Technical Specification Grid */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
-            <div className="font-mono text-[9px] tracking-tracked text-[#D4FF00] mb-1">
-              SPEC_01 // LATENCY
-            </div>
-            <h4 className="font-mono font-bold text-white text-xs uppercase">SUB-10MS SYNC</h4>
-            <p className="mt-1 text-[11px] font-mono text-zinc-400">
-              Authoritative server state və avtonom rehydration arxitekturası.
-            </p>
-          </div>
-
-          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
-            <div className="font-mono text-[9px] tracking-tracked text-[#FF4800] mb-1">
-              SPEC_02 // SPLIT_FLAP
-            </div>
-            <h4 className="font-mono font-bold text-white text-xs uppercase">MECHANICAL REEL</h4>
-            <p className="mt-1 text-[11px] font-mono text-zinc-400">
-              3D solenoid akustik simulyasiyası ilə hərf seçimi barabanı.
-            </p>
-          </div>
-
-          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
-            <div className="font-mono text-[9px] tracking-tracked text-[#D4FF00] mb-1">
-              SPEC_03 // EMERGENCY
-            </div>
-            <h4 className="font-mono font-bold text-white text-xs uppercase">TACTILE STOP CUTOFF</h4>
-            <p className="mt-1 text-[11px] font-mono text-zinc-400">
-              Bütün xanaları dolduran ilk operator 5 saniyəlik möhlət aktivləşdirir.
-            </p>
-          </div>
-
-          <div className="border border-white/[0.08] bg-[#0E1015] p-4 crosshair-corner">
-            <div className="font-mono text-[9px] tracking-tracked text-zinc-400 mb-1">
-              SPEC_04 // AUDIT
-            </div>
-            <h4 className="font-mono font-bold text-white text-xs uppercase">LEDGER CONSENSUS</h4>
-            <p className="mt-1 text-[11px] font-mono text-zinc-400">
-              Təkrar, unikal və tək cavablar üçün split-diff maliyyə auditi.
-            </p>
           </div>
         </div>
       </div>
