@@ -56,6 +56,13 @@ export const GameArena: React.FC = () => {
     updateLocalAnswer(catId, val);
   };
 
+  // Auto-flush answers when STOP is triggered or timer reaches critical
+  useEffect(() => {
+    if (isStopping && !isSpectator) {
+      sendGameAction('submit_answers', { answers: localAnswers });
+    }
+  }, [isStopping, isSpectator, localAnswers, sendGameAction]);
+
   const handleStopButton = () => {
     if (!allFieldsFilled) {
       setNotification({
@@ -64,7 +71,7 @@ export const GameArena: React.FC = () => {
       });
       return;
     }
-    sendGameAction('stop');
+    sendGameAction('stop', { answers: localAnswers });
   };
 
   const allPlayers = Object.values(room.players).filter((p) => !p.isSpectator);

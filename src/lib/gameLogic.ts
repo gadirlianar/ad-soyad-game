@@ -81,7 +81,7 @@ export function calculateRoundScores(room: Room): RoundResult {
         upvotes: number;
         downvotes: number;
         hasHostOverride: boolean;
-        hostOverrideValue?: boolean;
+        hostOverrideValue?: boolean | number;
       }
     > = {};
 
@@ -130,11 +130,21 @@ export function calculateRoundScores(room: Room): RoundResult {
 
     for (const player of activePlayers) {
       const entry = playerAnswerMap[player.id];
+      const voteKey = `${player.id}_${catId}`;
+      const explicitPointOverride = room.manualPointOverrides?.[voteKey];
+      const rawOverride = room.manualOverrides[voteKey];
+
       let isFinalValid = entry.isValidInitial;
       let finalReason: ScoreReason = entry.initialReason;
 
-      if (entry.hasHostOverride) {
-        isFinalValid = Boolean(entry.hostOverrideValue);
+      if (explicitPointOverride !== undefined) {
+        isFinalValid = explicitPointOverride > 0;
+        finalReason = explicitPointOverride === 10 ? 'unique' : explicitPointOverride === 5 ? 'duplicate' : 'host_override';
+      } else if (typeof rawOverride === 'number') {
+        isFinalValid = rawOverride > 0;
+        finalReason = rawOverride === 10 ? 'unique' : rawOverride === 5 ? 'duplicate' : 'host_override';
+      } else if (rawOverride !== undefined) {
+        isFinalValid = Boolean(rawOverride);
         if (!isFinalValid) finalReason = 'host_override';
       } else if (isFinalValid && entry.downvotes > entry.upvotes && entry.downvotes >= 1) {
         // Disapproved by peer voting
@@ -148,40 +158,57 @@ export function calculateRoundScores(room: Room): RoundResult {
       }
     }
 
-    // Assign points based on uniqueness / duplication / solo answer
+    // Assign points based on uniqueness / duplication / solo answer or host overrides
     for (const player of activePlayers) {
       const entry = playerAnswerMap[player.id];
       const voteKey = `${player.id}_${catId}`;
+      const explicitPointOverride = room.manualPointOverrides?.[voteKey];
+      const rawOverride = room.manualOverrides[voteKey];
+
       let isFinalValid = entry.isValidInitial;
       let reason: ScoreReason = entry.initialReason;
+      let points = 0;
 
-      if (entry.hasHostOverride) {
-        isFinalValid = Boolean(entry.hostOverrideValue);
-        if (!isFinalValid) reason = 'host_override';
+      if (explicitPointOverride !== undefined) {
+        points = explicitPointOverride;
+        isFinalValid = points > 0;
+        reason = points === 10 ? 'unique' : points === 5 ? 'duplicate' : 'host_override';
+      } else if (typeof rawOverride === 'number') {
+        points = rawOverride;
+        isFinalValid = points > 0;
+        reason = points === 10 ? 'unique' : points === 5 ? 'duplicate' : 'host_override';
+      } else if (rawOverride !== undefined) {
+        isFinalValid = Boolean(rawOverride);
+        if (!isFinalValid) {
+          reason = 'host_override';
+          points = 0;
+        } else if (entry.normalized) {
+          const duplicateCount = normalizedCounts[entry.normalized] || 0;
+          if (duplicateCount > 1) {
+            points = 5;
+            reason = 'duplicate';
+          } else {
+            points = 10;
+            reason = 'unique';
+          }
+        }
       } else if (isFinalValid && entry.downvotes > entry.upvotes && entry.downvotes >= 1) {
         isFinalValid = false;
         reason = 'disapproved';
-      }
-
-      let points = 0;
-
-      if (isFinalValid && entry.normalized) {
+        points = 0;
+      } else if (isFinalValid && entry.normalized) {
         const duplicateCount = normalizedCounts[entry.normalized] || 0;
-        const totalValidAnswersInCat = validPlayersForCat.length;
-
-        if (totalValidAnswersInCat === 1 && activePlayers.length > 1) {
-          // Solo answer in this category across all active players!
-          points = 15;
-          reason = 'solo';
-        } else if (duplicateCount > 1) {
+        if (duplicateCount > 1) {
           // Duplicate answer with another player
           points = 5;
           reason = 'duplicate';
         } else {
-          // Valid unique answer
+          // Valid unique answer (10 points as requested by user)
           points = 10;
           reason = 'unique';
         }
+      } else {
+        points = 0;
       }
 
       scores[player.id][catId] = {
@@ -191,7 +218,7 @@ export function calculateRoundScores(room: Room): RoundResult {
         points,
         upvotes: entry.upvotes,
         downvotes: entry.downvotes,
-        hostOverride: entry.hasHostOverride ? entry.hostOverrideValue : undefined,
+        hostOverride: typeof rawOverride === 'boolean' ? rawOverride : typeof rawOverride === 'number' ? rawOverride > 0 : undefined,
       };
 
       roundTotals[player.id] += points;

@@ -1,25 +1,49 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, Gavel } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { calculateRoundScores } from '@/lib/gameLogic';
 import { tactileAudio } from '@/lib/audio';
 
 export const PeerReviewList: React.FC = () => {
-  const { room, playerId, sendGameAction } = useGameStore();
+  const { room, playerId, localAnswers, sendGameAction } = useGameStore();
   const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
+
+  // If localAnswers has data but room.answers doesn't have it yet, immediately push to server
+  useEffect(() => {
+    if (!room || !playerId) return;
+    const myServerAnswers = room.answers[playerId] || {};
+    const hasLocalContent = Object.values(localAnswers).some((v) => (v || '').trim().length > 0);
+    const hasServerContent = Object.values(myServerAnswers).some((v) => (v || '').trim().length > 0);
+
+    if (hasLocalContent && !hasServerContent) {
+      sendGameAction('submit_answers', { answers: localAnswers });
+    }
+  }, [room, playerId, localAnswers, sendGameAction]);
 
   if (!room) return null;
 
   const currentPlayer = room.players[playerId];
-  const isHost = room.hostId === playerId || currentPlayer?.isHost;
+  const isHost = Boolean(room.hostId === playerId || currentPlayer?.isHost);
   const categories = room.settings.categories;
   const activePlayers = Object.values(room.players).filter((p) => !p.isSpectator);
   const previewScores = calculateRoundScores(room);
   const activeCategory = categories[selectedCategoryIndex] || categories[0];
 
+  // Host direct score assignment (0 xal, 5 xal, 10 xal)
+  const handleHostSetPoints = (targetPlayerId: string, categoryId: string, points: number) => {
+    if (!isHost) return;
+    tactileAudio.playKeyStroke();
+    sendGameAction('set_points', {
+      targetPlayerId,
+      categoryId,
+      points,
+    });
+  };
+
+  // Peer voting for non-hosts
   const handleVote = (targetPlayerId: string, categoryId: string, approved: boolean) => {
     if (playerId === targetPlayerId) return;
     tactileAudio.playVoteClick(approved);
@@ -31,20 +55,20 @@ export const PeerReviewList: React.FC = () => {
     });
   };
 
-  const handleHostOverride = (targetPlayerId: string, categoryId: string, currentValid: boolean) => {
-    if (!isHost) return;
-    tactileAudio.playVoteClick(!currentValid);
-    sendGameAction('override', {
-      targetPlayerId,
-      categoryId,
-      isValid: !currentValid,
-    });
-  };
-
   const handleFinalize = () => {
     if (!isHost) return;
     tactileAudio.playRoundComplete();
     sendGameAction('finalize');
+  };
+
+  const handlePrevCategory = () => {
+    tactileAudio.playKeyStroke();
+    setSelectedCategoryIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextCategory = () => {
+    tactileAudio.playKeyStroke();
+    setSelectedCategoryIndex((prev) => Math.min(categories.length - 1, prev + 1));
   };
 
   return (
@@ -56,7 +80,7 @@ export const PeerReviewList: React.FC = () => {
             Cavabları Yoxlayın
           </h1>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Hərf: <span className="font-semibold text-neutral-900 dark:text-white">&quot;{room.currentLetter}&quot;</span> · Mübahisəli sözləri təsdiqləyin və ya rədd edin
+            Hərf: <span className="font-semibold text-neutral-900 dark:text-white">&quot;{room.currentLetter}&quot;</span> · {isHost ? 'Xalları təyin edin və ya dəyişin (0, 5, 10)' : 'Mübahisəli sözləri səsvermə ilə təsdiqləyin'}
           </p>
         </div>
 
@@ -65,7 +89,7 @@ export const PeerReviewList: React.FC = () => {
             onClick={handleFinalize}
             className="rounded-full bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold px-5 py-2.5 shadow-[0_4px_14px_rgba(0,122,255,0.3)] transition-all cursor-pointer"
           >
-            Tamamla və Davam Et
+            Tamamla və Növbətiyə Keç
           </button>
         ) : (
           <span className="text-xs text-neutral-400 dark:text-neutral-500">
@@ -74,8 +98,8 @@ export const PeerReviewList: React.FC = () => {
         )}
       </div>
 
-      {/* Apple Settings-Style Segmented Control */}
-      <div className="flex overflow-x-auto p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl mb-6 scrollbar-none gap-1">
+      {/* Apple Settings-Style Segmented Control for Categories */}
+      <div className="flex overflow-x-auto p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl mb-4 scrollbar-none gap-1">
         {categories.map((cat, idx) => {
           const isSelected = idx === selectedCategoryIndex;
           return (
@@ -104,118 +128,181 @@ export const PeerReviewList: React.FC = () => {
         })}
       </div>
 
+      {/* Category Navigation Arrows */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <button
+          onClick={handlePrevCategory}
+          disabled={selectedCategoryIndex === 0}
+          className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span>Əvvəlki</span>
+        </button>
+
+        <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+          {activeCategory.azLabel} ({selectedCategoryIndex + 1} / {categories.length})
+        </span>
+
+        <button
+          onClick={handleNextCategory}
+          disabled={selectedCategoryIndex === categories.length - 1}
+          className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+        >
+          <span>Növbəti</span>
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* iOS Grouped List of Answers */}
       <div className="rounded-2xl bg-white/70 dark:bg-[#161618]/70 border border-black/[0.04] dark:border-white/[0.06] divide-y divide-black/[0.04] dark:divide-white/[0.06] shadow-[0_8px_30px_rgba(0,0,0,0.03)] overflow-hidden">
         {activePlayers.map((player) => {
           const isMe = player.id === playerId;
+          
+          // Look up answer from score calculation, room.answers, or localAnswers fallback
+          const rawVal =
+            room.answers[player.id]?.[activeCategory.id] ||
+            (isMe ? localAnswers[activeCategory.id] : '') ||
+            '';
+
           const scoreInfo = previewScores.scores[player.id]?.[activeCategory.id] || {
-            value: '',
+            value: rawVal,
             isValid: false,
             reason: 'empty',
             points: 0,
             upvotes: 0,
             downvotes: 0,
           };
+
+          const answerText = rawVal.trim() || scoreInfo.value.trim();
           const voteKey = `${player.id}_${activeCategory.id}`;
-          const playerVotes = room.votes[voteKey] || {};
-          const myVote = playerVotes[playerId];
+          const currentPoints = scoreInfo.points;
 
           return (
             <div
               key={player.id}
-              className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.02]"
             >
-              {/* Left: Player + Word */}
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{player.avatar}</span>
-                <div>
+              {/* Left: Player + Written Word */}
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-2xl shrink-0">{player.avatar}</span>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                       {player.name}
                     </span>
-                    {isMe && (
-                      <span className="text-[10px] text-neutral-400">· Sən</span>
-                    )}
+                    {isMe && <span className="text-[10px] text-neutral-400">· Sən</span>}
                   </div>
                   <span
-                    className={`text-base font-semibold ${
-                      scoreInfo.value.trim()
-                        ? 'text-neutral-900 dark:text-white'
-                        : 'text-neutral-400 dark:text-neutral-600 italic'
+                    className={`text-base font-semibold block truncate ${
+                      answerText
+                        ? 'text-neutral-900 dark:text-white font-bold'
+                        : 'text-neutral-400 dark:text-neutral-600 italic font-normal'
                     }`}
                   >
-                    {scoreInfo.value.trim() ? scoreInfo.value : 'Boşdur'}
+                    {answerText || 'Boşdur'}
                   </span>
                 </div>
               </div>
 
-              {/* Right: Badge & Voting Pills */}
-              <div className="flex items-center gap-3 justify-between sm:justify-end">
-                {/* Soft Muted Reason Badge */}
-                <div className="flex items-center gap-1.5">
+              {/* Right: Points Display & Host Point Controls */}
+              <div className="flex items-center gap-2 justify-between sm:justify-end shrink-0">
+                {/* Status Badges for all users */}
+                <div className="flex items-center gap-1">
                   {scoreInfo.reason === 'duplicate' && (
-                    <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs font-medium px-2.5 py-1 rounded-full">
-                      Təkrar (+5)
-                    </span>
-                  )}
-                  {scoreInfo.reason === 'solo' && (
-                    <span className="bg-[#007AFF]/10 text-[#007AFF] text-xs font-semibold px-2.5 py-1 rounded-full">
-                      Tək Cavab (+15)
+                    <span className="bg-[#FF9500]/10 text-[#FF9500] text-[11px] font-medium px-2 py-0.5 rounded-full">
+                      Təkrar
                     </span>
                   )}
                   {scoreInfo.reason === 'unique' && (
-                    <span className="bg-[#34C759]/10 text-[#34C759] text-xs font-medium px-2.5 py-1 rounded-full">
-                      Unikal (+10)
+                    <span className="bg-[#34C759]/10 text-[#34C759] text-[11px] font-medium px-2 py-0.5 rounded-full">
+                      Unikal
                     </span>
                   )}
-                  {!scoreInfo.isValid && (
-                    <span className="bg-[#FF3B30]/10 text-[#FF3B30] text-xs font-medium px-2.5 py-1 rounded-full">
-                      0 xal
+                  {scoreInfo.reason === 'solo' && (
+                    <span className="bg-[#007AFF]/10 text-[#007AFF] text-[11px] font-medium px-2 py-0.5 rounded-full">
+                      Tək Cavab
                     </span>
                   )}
                 </div>
 
-                {/* iOS-Style Toggle Pills */}
-                {!isMe ? (
-                  <div className="flex items-center gap-1.5">
+                {/* HOST DIRECT POINT CONTROLS (0 xal, 5 xal, 10 xal) */}
+                {isHost ? (
+                  <div className="flex items-center gap-1 bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-xl">
                     <button
-                      onClick={() => handleVote(player.id, activeCategory.id, true)}
-                      className={`h-7 w-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                        myVote === true
-                          ? 'bg-[#34C759] text-white shadow-sm'
-                          : 'bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                      onClick={() => handleHostSetPoints(player.id, activeCategory.id, 0)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPoints === 0
+                          ? 'bg-[#FF3B30] text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
                       }`}
-                      title="Qəbul et"
+                      title="0 xal ver (Boş / Yanlış)"
                     >
-                      <Check className="h-3.5 w-3.5" />
+                      0
                     </button>
                     <button
-                      onClick={() => handleVote(player.id, activeCategory.id, false)}
-                      className={`h-7 w-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                        myVote === false
-                          ? 'bg-[#FF3B30] text-white shadow-sm'
-                          : 'bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                      onClick={() => handleHostSetPoints(player.id, activeCategory.id, 5)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPoints === 5
+                          ? 'bg-[#FF9500] text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
                       }`}
-                      title="Rədd et"
+                      title="5 xal ver (Eyni / Təkrar)"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      5
+                    </button>
+                    <button
+                      onClick={() => handleHostSetPoints(player.id, activeCategory.id, 10)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPoints === 10
+                          ? 'bg-[#34C759] text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                      }`}
+                      title="10 xal ver (Unikal / Düzgün)"
+                    >
+                      10
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[11px] text-neutral-400">Öz cavabın</span>
-                )}
+                  /* Non-Host Points Badge */
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full tabular-nums ${
+                        currentPoints === 10
+                          ? 'bg-[#34C759]/15 text-[#34C759]'
+                          : currentPoints === 5
+                          ? 'bg-[#FF9500]/15 text-[#FF9500]'
+                          : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500'
+                      }`}
+                    >
+                      {currentPoints} xal
+                    </span>
 
-                {/* Host Override Mini Key */}
-                {isHost && (
-                  <button
-                    onClick={() =>
-                      handleHostOverride(player.id, activeCategory.id, scoreInfo.isValid)
-                    }
-                    className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
-                    title="Host Qərarını Dəyiş"
-                  >
-                    <Gavel className="h-3.5 w-3.5" />
-                  </button>
+                    {/* Non-Host Peer Vote Buttons */}
+                    {!isMe && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleVote(player.id, activeCategory.id, true)}
+                          className={`h-7 w-7 rounded-full flex items-center justify-center transition cursor-pointer ${
+                            room.votes[voteKey]?.[playerId] === true
+                              ? 'bg-[#34C759] text-white'
+                              : 'bg-black/[0.04] dark:bg-white/[0.08] text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                          }`}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleVote(player.id, activeCategory.id, false)}
+                          className={`h-7 w-7 rounded-full flex items-center justify-center transition cursor-pointer ${
+                            room.votes[voteKey]?.[playerId] === false
+                              ? 'bg-[#FF3B30] text-white'
+                              : 'bg-black/[0.04] dark:bg-white/[0.08] text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                          }`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

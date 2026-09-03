@@ -96,7 +96,19 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       const nextAnswers = { ...state.localAnswers, [categoryId]: value };
       const { room, playerId } = state;
       if (room && playerId) {
-        // Fast sync via socket
+        // Optimistically update local room answers
+        const currentAnswers = room.answers[playerId]
+          ? { ...room.answers[playerId], [categoryId]: value }
+          : { [categoryId]: value };
+        const updatedRoom = {
+          ...room,
+          answers: {
+            ...room.answers,
+            [playerId]: currentAnswers,
+          },
+        };
+
+        // Fast sync via socket if connected
         const socket = getSocket();
         if (socket.connected) {
           socket.emit('game:answer_update', {
@@ -106,6 +118,26 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             value,
           });
         }
+
+        // Debounced REST sync for serverless Upstash persistence
+        if (typeof window !== 'undefined') {
+          const w = window as unknown as { _answerSyncTimer?: NodeJS.Timeout };
+          if (w._answerSyncTimer) clearTimeout(w._answerSyncTimer);
+          w._answerSyncTimer = setTimeout(() => {
+            fetch('/api/game/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                roomCode: room.code,
+                action: 'answer_update',
+                playerId,
+                data: { categoryId, value, answers: nextAnswers },
+              }),
+            }).catch(() => {});
+          }, 350);
+        }
+
+        return { localAnswers: nextAnswers, room: updatedRoom };
       }
       return { localAnswers: nextAnswers };
     });
@@ -232,6 +264,33 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       });
     }
 
+    if (action === 'set_points' && actionData) {
+      const { targetPlayerId, categoryId, points } = actionData as {
+        targetPlayerId: string;
+        categoryId: string;
+        points: number;
+      };
+      set((state) => {
+        if (!state.room) return state;
+        const voteKey = `${targetPlayerId}_${categoryId}`;
+        const prevOverrides = state.room.manualOverrides || {};
+        const prevPointOverrides = state.room.manualPointOverrides || {};
+        return {
+          room: {
+            ...state.room,
+            manualOverrides: { ...prevOverrides, [voteKey]: points },
+            manualPointOverrides: { ...prevPointOverrides, [voteKey]: points },
+          },
+        };
+      });
+    }
+
+    const currentAnswers = get().localAnswers;
+    const finalData =
+      action === 'stop'
+        ? { ...actionData, answers: currentAnswers }
+        : actionData;
+
     try {
       const res = await fetch('/api/game/action', {
         method: 'POST',
@@ -240,7 +299,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           roomCode: room.code,
           action,
           playerId,
-          data: actionData,
+          data: finalData,
+          answers: finalData?.answers || (action === 'stop' ? currentAnswers : undefined),
           settings: actionData?.settings,
           isReady: actionData?.isReady,
         }),
@@ -395,10 +455,37 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
                 const prev = get().room;
                 set({ room: data.room });
 
-                // Audio cue transitions
+                // Audio cue transitions & automatic answer submission
                 if (prev && prev.status !== data.room.status) {
                   if (data.room.status === 'COUNTDOWN') soundManager.playCountdownBeep(false);
-                  if (data.room.status === 'REVIEW') soundManager.playRoundComplete();
+                  if (data.room.status === 'REVIEW') {
+                    soundManager.playRoundComplete();
+                    // Flush answers immediately upon entering REVIEW
+                    const currentLocalAnswers = get().localAnswers;
+                    const hasAnswers = Object.values(currentLocalAnswers).some(
+                      (v) => (v || '').trim().length > 0
+                    );
+                    if (hasAnswers && get().playerId) {
+                      fetch('/api/game/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          roomCode: data.room.code,
+                          action: 'submit_answers',
+                          playerId: get().playerId,
+                          data: { answers: currentLocalAnswers },
+                          answers: currentLocalAnswers,
+                        }),
+                      })
+                        .then((r) => r.json())
+                        .then((res) => {
+                          if (res.success && res.room) {
+                            set({ room: res.room });
+                          }
+                        })
+                        .catch(() => {});
+                    }
+                  }
                   if (data.room.status === 'FINISHED') soundManager.playVictoryFanfare();
                 }
 

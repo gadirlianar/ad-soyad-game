@@ -336,7 +336,8 @@ export async function startSharedGame(
 
 export async function triggerSharedStop(
   roomCode: string,
-  playerId: string
+  playerId: string,
+  answers?: Record<string, string>
 ): Promise<{ success: boolean; room?: Room; error?: string }> {
   const room = await fetchRoom(roomCode);
   if (!room || room.status !== 'PLAYING') {
@@ -349,6 +350,12 @@ export async function triggerSharedStop(
 
   const player = room.players[playerId];
   if (!player) return { success: false, error: 'Oyunçu tapılmadı.' };
+
+  // If client passed answers, save them immediately
+  if (answers && typeof answers === 'object') {
+    if (!room.answers[playerId]) room.answers[playerId] = {};
+    room.answers[playerId] = { ...room.answers[playerId], ...answers };
+  }
 
   const playerAnswers = room.answers[playerId] || {};
   const filledCount = room.settings.categories.filter(

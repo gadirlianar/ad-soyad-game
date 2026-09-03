@@ -76,7 +76,8 @@ export interface Room {
   players: Record<string, Player>;
   answers: Record<string, Record<string, string>>; // playerId -> categoryId -> answer
   votes: Record<string, Record<string, boolean>>; // `${targetPlayerId}_${categoryId}` -> voterId -> boolean
-  manualOverrides: Record<string, boolean>; // `${targetPlayerId}_${categoryId}` -> isValid
+  manualOverrides: Record<string, boolean | number>; // `${targetPlayerId}_${categoryId}` -> isValid or numeric points
+  manualPointOverrides?: Record<string, number>; // `${targetPlayerId}_${categoryId}` -> explicit points (0, 5, 10)
   roundResults: RoundResult[];
   countdownTime: number;
   roundTimeRemaining: number;

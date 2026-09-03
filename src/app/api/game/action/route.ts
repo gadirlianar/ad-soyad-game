@@ -40,18 +40,21 @@ export async function POST(req: NextRequest) {
       }
 
       case 'answer_update': {
-        const { categoryId, value } = data || {};
-        if (room.status === 'PLAYING') {
-          if (!room.answers[playerId]) room.answers[playerId] = {};
+        const { categoryId, value, answers } = data || body;
+        if (!room.answers[playerId]) room.answers[playerId] = {};
+        if (categoryId !== undefined && value !== undefined) {
           room.answers[playerId][categoryId] = value;
-          await saveRoom(room);
         }
+        if (answers && typeof answers === 'object') {
+          room.answers[playerId] = { ...room.answers[playerId], ...answers };
+        }
+        await saveRoom(room);
         return NextResponse.json({ success: true, room });
       }
 
       case 'submit_answers': {
-        const { answers } = data || {};
-        if (room.answers) {
+        const answers = data?.answers || body.answers || body.data?.answers;
+        if (answers && typeof answers === 'object') {
           if (!room.answers[playerId]) room.answers[playerId] = {};
           room.answers[playerId] = { ...room.answers[playerId], ...answers };
           await saveRoom(room);
@@ -60,12 +63,13 @@ export async function POST(req: NextRequest) {
       }
 
       case 'stop': {
-        const result = await triggerSharedStop(code, playerId);
+        const answers = data?.answers || body.answers || body.data?.answers;
+        const result = await triggerSharedStop(code, playerId, answers);
         return NextResponse.json(result, { status: result.success ? 200 : 400 });
       }
 
       case 'vote': {
-        const { voterId, targetPlayerId, categoryId, approved } = data || {};
+        const { voterId, targetPlayerId, categoryId, approved } = data || body;
         if (room.status === 'REVIEW' && voterId !== targetPlayerId) {
           const voteKey = `${targetPlayerId}_${categoryId}`;
           if (!room.votes[voteKey]) room.votes[voteKey] = {};
@@ -79,15 +83,37 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, room });
       }
 
-      case 'override': {
-        const { targetPlayerId, categoryId, isValid } = data || {};
+      case 'set_points': {
+        const { targetPlayerId, categoryId, points } = data || body;
         const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
         if (room.status === 'REVIEW' && isHost) {
           const voteKey = `${targetPlayerId}_${categoryId}`;
-          if (room.manualOverrides[voteKey] === isValid) {
-            delete room.manualOverrides[voteKey];
+          if (!room.manualPointOverrides) room.manualPointOverrides = {};
+          const pts = Number(points);
+          room.manualPointOverrides[voteKey] = pts;
+          room.manualOverrides[voteKey] = pts;
+          await saveRoom(room);
+        }
+        return NextResponse.json({ success: true, room });
+      }
+
+      case 'override': {
+        const { targetPlayerId, categoryId, isValid, points } = data || body;
+        const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
+        if (room.status === 'REVIEW' && isHost) {
+          const voteKey = `${targetPlayerId}_${categoryId}`;
+          if (points !== undefined) {
+            if (!room.manualPointOverrides) room.manualPointOverrides = {};
+            const pts = Number(points);
+            room.manualPointOverrides[voteKey] = pts;
+            room.manualOverrides[voteKey] = pts;
           } else {
-            room.manualOverrides[voteKey] = isValid;
+            if (room.manualOverrides[voteKey] === isValid) {
+              delete room.manualOverrides[voteKey];
+              if (room.manualPointOverrides) delete room.manualPointOverrides[voteKey];
+            } else {
+              room.manualOverrides[voteKey] = isValid;
+            }
           }
           await saveRoom(room);
         }
