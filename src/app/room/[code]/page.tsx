@@ -44,18 +44,26 @@ export default function RoomPage() {
   useEffect(() => {
     if (!roomCode || hasAttemptedAutoJoin) return;
 
-    if (playerId && (playerName || name)) {
+    // If room is already loaded and active in state, mark done
+    if (room && room.code === roomCode) {
+      setHasAttemptedAutoJoin(true);
+      return;
+    }
+
+    const currentName = playerName || name;
+    if (playerId && currentName) {
       joinRoomApi(roomCode, {
         id: playerId,
-        name: playerName || name,
+        name: currentName,
         avatar: playerAvatar || avatar,
       }).then(() => {
         setHasAttemptedAutoJoin(true);
       });
-    } else {
+    } else if (playerId && !currentName) {
+      // Player ID loaded but no name yet, prompt user with fast join card
       setHasAttemptedAutoJoin(true);
     }
-  }, [roomCode, playerId, playerName, playerAvatar, name, avatar, hasAttemptedAutoJoin, joinRoomApi]);
+  }, [roomCode, playerId, playerName, playerAvatar, name, avatar, hasAttemptedAutoJoin, joinRoomApi, room]);
 
   const handleManualJoin = async () => {
     const trimmedName = name.trim();
@@ -103,6 +111,20 @@ export default function RoomPage() {
       default:
         return <LobbyView />;
     }
+  }
+
+  // Smooth loading state while auto-joining
+  if (!hasAttemptedAutoJoin) {
+    return (
+      <div className="flex-1 flex items-center justify-center select-none">
+        <div className="apple-glass rounded-full px-6 py-3 flex items-center gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+          <div className="h-4 w-4 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
+            {roomCode} otağına qoşulur...
+          </span>
+        </div>
+      </div>
+    );
   }
 
   // Fast Join card with pre-filled room code

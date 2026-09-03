@@ -23,11 +23,12 @@ export const GameInputDeck: React.FC<GameInputDeckProps> = ({
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   React.useEffect(() => {
-    // Autofocus the first empty field or first field when round starts
-    const firstEmptyIndex = categories.findIndex((c) => !(localAnswers[c.id] || '').trim());
-    const targetIdx = firstEmptyIndex !== -1 ? firstEmptyIndex : 0;
-    inputRefs.current[targetIdx]?.focus();
-  }, [currentLetter, categories]);
+    // Only autofocus the very first field ONCE when the round starts
+    const timer = setTimeout(() => {
+      inputRefs.current[0]?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [currentLetter]);
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter') {

@@ -19,32 +19,39 @@ export const SlotMachineReveal: React.FC<SlotMachineRevealProps> = ({
   const [displayLetter, setDisplayLetter] = useState('?');
   const [isLocked, setIsLocked] = useState(false);
 
+  const countdownRef = React.useRef(countdownTime);
+  countdownRef.current = countdownTime;
+
   useEffect(() => {
-    let speed = 45;
+    let speed = 40;
     let step = 0;
     let timer: NodeJS.Timeout;
+    let isMounted = true;
 
     const roll = () => {
-      const pool = AZERBAIJANI_ALPHABET;
-      const nextLetter = pool[Math.floor(Math.random() * pool.length)];
-      setDisplayLetter(nextLetter);
+      if (!isMounted) return;
       step++;
 
-      tactileAudio.playFlapClick();
-
-      if (step > 16 && countdownTime <= 1) {
+      if (step > 14 || countdownRef.current <= 1) {
         setDisplayLetter(targetLetter);
         setIsLocked(true);
         tactileAudio.playCountdownBeep(true);
       } else {
-        speed = Math.min(speed + 12, 240);
+        const pool = AZERBAIJANI_ALPHABET;
+        const nextLetter = pool[Math.floor(Math.random() * pool.length)];
+        setDisplayLetter(nextLetter);
+        tactileAudio.playFlapClick();
+        speed = Math.min(speed + 15, 220);
         timer = setTimeout(roll, speed);
       }
     };
 
-    roll();
-    return () => clearTimeout(timer);
-  }, [targetLetter, countdownTime]);
+    timer = setTimeout(roll, speed);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [targetLetter]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-xl px-4 select-none">

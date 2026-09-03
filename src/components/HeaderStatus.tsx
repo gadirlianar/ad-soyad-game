@@ -115,7 +115,7 @@ export const HeaderStatus: React.FC<HeaderStatusProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto max-w-full px-2 py-1">
           {players.map((p) => {
             const isMe = p.id === currentPlayerId;
-            const pAnswers = playerAnswers[p.id] || {};
+            const pAnswers = (playerAnswers && playerAnswers[p.id]) || {};
             const filledCount = Object.values(pAnswers).filter((v) => (v || '').trim().length > 0).length;
             const isCompleted = filledCount === totalCategories && totalCategories > 0;
 
