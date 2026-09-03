@@ -19,7 +19,7 @@ export const PodiumView: React.FC = () => {
   const { room, playerId, sendGameAction } = useGameStore();
 
   const isFinished = room?.status === 'FINISHED';
-  const isHost = room?.players[playerId]?.isHost;
+  const isHost = room?.hostId === playerId || room?.players[playerId]?.isHost;
 
   useEffect(() => {
     if (isFinished) {

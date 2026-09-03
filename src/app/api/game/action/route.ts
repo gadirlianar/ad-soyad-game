@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
         const isHost = room.hostId === playerId || room.players[playerId]?.isHost;
         if (room.status === 'SCOREBOARD' && isHost) {
           room.currentRound += 1;
+          // Persist the incremented round BEFORE startSharedGame re-fetches from Redis
+          await saveRoom(room);
           const result = await startSharedGame(code, playerId);
           return NextResponse.json(result);
         }

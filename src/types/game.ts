@@ -83,6 +83,9 @@ export interface Room {
   graceTimeRemaining: number | null;
   stoppedBy: { id: string; name: string } | null;
   createdAt: number;
+  countdownStartedAt?: number;
+  playingStartedAt?: number;
+  stopTriggeredAt?: number;
 }
 
 // Client-to-server events

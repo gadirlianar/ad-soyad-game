@@ -28,7 +28,7 @@ export const ReviewMatrix: React.FC = () => {
   if (!room) return null;
 
   const currentPlayer = room.players[playerId];
-  const isHost = currentPlayer?.isHost;
+  const isHost = room.hostId === playerId || currentPlayer?.isHost;
   const categories = room.settings.categories;
   const activePlayers = Object.values(room.players).filter((p) => !p.isSpectator);
 

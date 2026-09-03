@@ -65,26 +65,43 @@ export async function saveRoom(room: Room): Promise<void> {
 }
 
 /**
- * Fetches a room from Redis or in-memory store
+ * Fetches a room from Redis or in-memory store.
+ * Reconciles serverless timer state and persists any state transitions.
  */
 export async function fetchRoom(code: string): Promise<Room | null> {
   const normalized = code.toUpperCase();
 
+  let room: Room | null = null;
+
   try {
     const result = (await redisCommand('GET', `ad_soyad_room:${normalized}`)) as string | null;
     if (result) {
-      const parsed = JSON.parse(result) as Room;
-      inMemoryStore.set(normalized, parsed);
-      return reconcileRoomState(parsed);
+      room = JSON.parse(result) as Room;
+      inMemoryStore.set(normalized, room);
     }
   } catch (err) {
     console.error('Failed to fetch room from Redis:', err);
   }
 
   // Fallback to in-memory store
-  const local = inMemoryStore.get(normalized);
-  if (!local) return null;
-  return reconcileRoomState(local);
+  if (!room) {
+    const local = inMemoryStore.get(normalized);
+    if (!local) return null;
+    room = local;
+  }
+
+  // Reconcile timer state and persist if any state transition occurred
+  const prevStatus = room.status;
+  const prevPlayingStartedAt = room.playingStartedAt;
+  reconcileRoomState(room);
+
+  // If reconciliation caused a state transition, persist immediately
+  const stateChanged = room.status !== prevStatus || room.playingStartedAt !== prevPlayingStartedAt;
+  if (stateChanged) {
+    await saveRoom(room);
+  }
+
+  return room;
 }
 
 /**
@@ -95,12 +112,13 @@ export function reconcileRoomState(room: Room): Room {
 
   // If countdown is active
   if (room.status === 'COUNTDOWN') {
-    const elapsed = Math.floor((now - (room.createdAt || now)) / 1000);
+    const startedAt = room.countdownStartedAt || room.createdAt || now;
+    const elapsed = Math.floor((now - startedAt) / 1000);
     const remaining = Math.max(0, 3 - elapsed);
     room.countdownTime = remaining;
     if (remaining <= 0) {
       room.status = 'PLAYING';
-      room.createdAt = now;
+      room.playingStartedAt = now;
       room.roundTimeRemaining = room.settings.roundDuration;
     }
   }
@@ -108,7 +126,9 @@ export function reconcileRoomState(room: Room): Room {
   // If playing phase is active
   if (room.status === 'PLAYING') {
     if (room.graceTimeRemaining !== null && room.stoppedBy) {
-      const elapsedGrace = Math.floor((now - (room.createdAt || now)) / 1000);
+      // Grace period after STOP
+      const stopAt = room.stopTriggeredAt || room.playingStartedAt || now;
+      const elapsedGrace = Math.floor((now - stopAt) / 1000);
       const remainingGrace = Math.max(0, (room.settings.gracePeriodSeconds || 5) - elapsedGrace);
       room.graceTimeRemaining = remainingGrace;
 
@@ -117,7 +137,9 @@ export function reconcileRoomState(room: Room): Room {
         room.graceTimeRemaining = null;
       }
     } else if (room.settings.roundDuration > 0) {
-      const elapsed = Math.floor((now - (room.createdAt || now)) / 1000);
+      // Normal countdown timer
+      const playAt = room.playingStartedAt || room.createdAt || now;
+      const elapsed = Math.floor((now - playAt) / 1000);
       const remaining = Math.max(0, room.settings.roundDuration - elapsed);
       room.roundTimeRemaining = remaining;
 
@@ -297,7 +319,9 @@ export async function startSharedGame(
   room.answers = {};
   room.votes = {};
   room.manualOverrides = {};
-  room.createdAt = Date.now();
+  room.countdownStartedAt = Date.now();
+  room.playingStartedAt = undefined;
+  room.stopTriggeredAt = undefined;
 
   for (const player of Object.values(room.players)) {
     room.answers[player.id] = {};
@@ -338,7 +362,7 @@ export async function triggerSharedStop(
   room.stoppedBy = { id: player.id, name: player.name };
   const graceSeconds = room.settings.gracePeriodSeconds || 5;
   room.graceTimeRemaining = graceSeconds;
-  room.createdAt = Date.now();
+  room.stopTriggeredAt = Date.now();
 
   await saveRoom(room);
   return { success: true, room };

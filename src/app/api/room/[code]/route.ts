@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   fetchRoom,
   joinSharedRoom,
-  saveRoom,
   updateSharedSettings,
   setSharedPlayerReady,
 } from '@/server/sharedStore';
