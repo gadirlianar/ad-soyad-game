@@ -191,6 +191,9 @@ export const PeerReviewList: React.FC = () => {
                       {player.name}
                     </span>
                     {isMe && <span className="text-[10px] text-neutral-400">· Sən</span>}
+                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+                      (Raund: +{previewScores.roundTotals[player.id] || 0} xal)
+                    </span>
                   </div>
                   <span
                     className={`text-base font-semibold block truncate ${
@@ -260,6 +263,17 @@ export const PeerReviewList: React.FC = () => {
                       title="10 xal ver (Unikal / Düzgün)"
                     >
                       10
+                    </button>
+                    <button
+                      onClick={() => handleHostSetPoints(player.id, activeCategory.id, 15)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPoints === 15
+                          ? 'bg-[#007AFF] text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                      }`}
+                      title="15 xal ver (Tək / Xüsusi)"
+                    >
+                      15
                     </button>
                   </div>
                 ) : (

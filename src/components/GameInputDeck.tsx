@@ -22,6 +22,13 @@ export const GameInputDeck: React.FC<GameInputDeckProps> = ({
 }) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  React.useEffect(() => {
+    // Autofocus the first empty field or first field when round starts
+    const firstEmptyIndex = categories.findIndex((c) => !(localAnswers[c.id] || '').trim());
+    const targetIdx = firstEmptyIndex !== -1 ? firstEmptyIndex : 0;
+    inputRefs.current[targetIdx]?.focus();
+  }, [currentLetter, categories]);
+
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -29,6 +36,12 @@ export const GameInputDeck: React.FC<GameInputDeckProps> = ({
         inputRefs.current[index + 1]?.focus();
       }
     }
+  };
+
+  const handleClearField = (e: React.MouseEvent, catId: string) => {
+    e.stopPropagation();
+    tactileAudio.playKeyStroke();
+    onAnswerChange(catId, '');
   };
 
   return (
@@ -42,7 +55,7 @@ export const GameInputDeck: React.FC<GameInputDeckProps> = ({
           <div
             key={cat.id}
             onClick={() => inputRefs.current[idx]?.focus()}
-            className="group rounded-2xl bg-white/70 dark:bg-[#161618]/70 border border-black/[0.04] dark:border-white/[0.06] p-4 transition-all duration-200 hover:border-black/[0.1] dark:hover:border-white/[0.12] focus-within:ring-2 focus-within:ring-[#007AFF]/30 focus-within:border-[#007AFF]/60 shadow-[0_4px_16px_rgba(0,0,0,0.02)] cursor-text"
+            className="group rounded-2xl bg-white/70 dark:bg-[#161618]/70 border border-black/[0.04] dark:border-white/[0.06] p-4 transition-all duration-200 hover:border-black/[0.1] dark:hover:border-white/[0.12] focus-within:ring-2 focus-within:ring-[#007AFF]/30 focus-within:border-[#007AFF]/60 shadow-[0_4px_16px_rgba(0,0,0,0.02)] cursor-text relative"
           >
             {/* Field Header */}
             <div className="flex items-center justify-between mb-1">
@@ -50,8 +63,18 @@ export const GameInputDeck: React.FC<GameInputDeckProps> = ({
                 {cat.azLabel}
               </span>
 
-              {/* Soft Emerald Compliance Dot Indicator */}
-              <div className="flex items-center gap-1.5 h-4">
+              {/* Soft Emerald Compliance Dot Indicator & Clear */}
+              <div className="flex items-center gap-2 h-4">
+                {hasText && !disabled && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleClearField(e, cat.id)}
+                    className="text-neutral-300 hover:text-neutral-700 dark:text-neutral-600 dark:hover:text-white transition cursor-pointer text-xs"
+                    title="Xananı təmizlə"
+                  >
+                    ✕
+                  </button>
+                )}
                 {hasText && (
                   <span
                     className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${

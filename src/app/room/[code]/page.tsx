@@ -31,10 +31,14 @@ export default function RoomPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [hasAttemptedAutoJoin, setHasAttemptedAutoJoin] = useState(false);
 
+  const isInitialized = React.useRef(false);
   useEffect(() => {
-    if (playerName && !name) setName(playerName);
-    if (playerAvatar && !avatar) setAvatar(playerAvatar);
-  }, [playerName, playerAvatar, name, avatar]);
+    if (!isInitialized.current && playerName) {
+      setName(playerName);
+      if (playerAvatar) setAvatar(playerAvatar);
+      isInitialized.current = true;
+    }
+  }, [playerName, playerAvatar]);
 
   // Attempt auto-rejoin
   useEffect(() => {

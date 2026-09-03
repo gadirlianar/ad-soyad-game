@@ -120,7 +120,9 @@ export const LobbyView: React.FC = () => {
   const handleSaveProfile = () => {
     if (!tempName.trim()) return;
     tactileAudio.playKeyStroke();
-    setPlayerProfile(tempName.trim(), tempAvatar);
+    const cleanName = tempName.trim();
+    setPlayerProfile(cleanName, tempAvatar);
+    sendGameAction('update_profile', { name: cleanName, avatar: tempAvatar });
     setIsEditingProfile(false);
   };
 

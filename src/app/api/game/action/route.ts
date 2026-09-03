@@ -34,6 +34,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result, { status: result.success ? 200 : 400 });
       }
 
+      case 'update_profile': {
+        const { name, avatar } = data || body;
+        if (room.players[playerId]) {
+          if (name && typeof name === 'string') room.players[playerId].name = name.trim();
+          if (avatar && typeof avatar === 'string') room.players[playerId].avatar = avatar;
+          await saveRoom(room);
+        }
+        return NextResponse.json({ success: true, room });
+      }
+
       case 'start': {
         const result = await startSharedGame(code, playerId);
         return NextResponse.json(result, { status: result.success ? 200 : 400 });

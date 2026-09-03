@@ -25,10 +25,14 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const isInitialized = React.useRef(false);
   useEffect(() => {
-    if (playerName && !name) setName(playerName);
-    if (playerAvatar && !avatar) setAvatar(playerAvatar);
-  }, [playerName, playerAvatar, name, avatar]);
+    if (!isInitialized.current && playerName) {
+      setName(playerName);
+      if (playerAvatar) setAvatar(playerAvatar);
+      isInitialized.current = true;
+    }
+  }, [playerName, playerAvatar]);
 
   const handleCreateRoom = async () => {
     const trimmedName = name.trim();
