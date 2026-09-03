@@ -10,6 +10,7 @@ interface GameStoreState {
   playerAvatar: string;
   room: Room | null;
   isConnected: boolean;
+  isPolling: boolean;
   localAnswers: Record<string, string>;
   isMuted: boolean;
   notification: { type: 'info' | 'success' | 'warning' | 'error'; message: string } | null;
@@ -23,7 +24,21 @@ interface GameStoreState {
   clearLocalAnswers: () => void;
   toggleMute: () => void;
   setNotification: (notif: { type: 'info' | 'success' | 'warning' | 'error'; message: string } | null) => void;
-  initSocketListeners: () => () => void;
+  initSyncEngine: () => () => void;
+
+  // Hybrid room operations
+  createRoomApi: (
+    player: { id: string; name: string; avatar: string },
+    settings?: Record<string, unknown>
+  ) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  joinRoomApi: (
+    roomCode: string,
+    player: { id: string; name: string; avatar: string }
+  ) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  sendGameAction: (
+    action: string,
+    data?: Record<string, unknown>
+  ) => Promise<{ success: boolean; room?: Room; error?: string }>;
 }
 
 function generatePlayerId(): string {
@@ -42,6 +57,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   playerAvatar: PLAYER_AVATARS[0],
   room: null,
   isConnected: false,
+  isPolling: false,
   localAnswers: {},
   isMuted: false,
   notification: null,
@@ -80,25 +96,23 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       const nextAnswers = { ...state.localAnswers, [categoryId]: value };
       const { room, playerId } = state;
       if (room && playerId) {
+        // Fast sync via socket
         const socket = getSocket();
-        socket.emit('game:answer_update', {
-          roomCode: room.code,
-          playerId,
-          categoryId,
-          value,
-        });
+        if (socket.connected) {
+          socket.emit('game:answer_update', {
+            roomCode: room.code,
+            playerId,
+            categoryId,
+            value,
+          });
+        }
       }
       return { localAnswers: nextAnswers };
     });
   },
 
-  setAllLocalAnswers: (answers) => {
-    set({ localAnswers: answers });
-  },
-
-  clearLocalAnswers: () => {
-    set({ localAnswers: {} });
-  },
+  setAllLocalAnswers: (answers) => set({ localAnswers: answers }),
+  clearLocalAnswers: () => set({ localAnswers: {} }),
 
   toggleMute: () => {
     const nextMuted = soundManager.toggleMute();
@@ -116,23 +130,133 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
   },
 
-  initSocketListeners: () => {
+  createRoomApi: async (player, settings) => {
+    try {
+      const res = await fetch('/api/room/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player, settings }),
+      });
+      const data = await res.json();
+      if (data.success && data.room) {
+        set({ room: data.room });
+        // Join socket channel if socket is connected
+        const socket = getSocket();
+        if (socket.connected) {
+          socket.emit('room:join', { roomCode: data.room.code, player }, () => {});
+        }
+        return { success: true, room: data.room };
+      }
+      return { success: false, error: data.error || 'Otaq yaradılmadı.' };
+    } catch {
+      // Fallback to socket directly
+      return new Promise((resolve) => {
+        const socket = getSocket();
+        socket.emit('room:create', { player, settings }, (res) => {
+          if (res.success && res.room) {
+            set({ room: res.room });
+            resolve({ success: true, room: res.room });
+          } else {
+            resolve({ success: false, error: res.error || 'Xəta baş verdi.' });
+          }
+        });
+      });
+    }
+  },
+
+  joinRoomApi: async (roomCode, player) => {
+    try {
+      const res = await fetch(`/api/room/${roomCode.toUpperCase()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'join', player }),
+      });
+      const data = await res.json();
+      if (data.success && data.room) {
+        set({ room: data.room });
+        const socket = getSocket();
+        if (socket.connected) {
+          socket.emit('room:join', { roomCode: data.room.code, player }, () => {});
+        }
+        return { success: true, room: data.room };
+      }
+      return { success: false, error: data.error || 'Otaq tapılmadı.' };
+    } catch {
+      return new Promise((resolve) => {
+        const socket = getSocket();
+        socket.emit('room:join', { roomCode, player }, (res) => {
+          if (res.success && res.room) {
+            set({ room: res.room });
+            resolve({ success: true, room: res.room });
+          } else {
+            resolve({ success: false, error: res.error || 'Xəta baş verdi.' });
+          }
+        });
+      });
+    }
+  },
+
+  sendGameAction: async (action, actionData) => {
+    const { room, playerId } = get();
+    if (!room) return { success: false, error: 'Otaq yoxdur' };
+
+    try {
+      const res = await fetch('/api/game/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode: room.code,
+          action,
+          playerId,
+          data: actionData,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.room) {
+        set({ room: data.room });
+      }
+
+      // Also fire via socket for instant broadcast
+      const socket = getSocket();
+      if (socket.connected) {
+        if (action === 'start') socket.emit('game:start', { roomCode: room.code });
+        if (action === 'stop') socket.emit('game:stop', { roomCode: room.code, playerId });
+        if (action === 'vote' && actionData) {
+          socket.emit('review:vote', {
+            roomCode: room.code,
+            voterId: String(actionData.voterId),
+            targetPlayerId: String(actionData.targetPlayerId),
+            categoryId: String(actionData.categoryId),
+            approved: Boolean(actionData.approved),
+          });
+        }
+        if (action === 'finalize') socket.emit('review:finalize', { roomCode: room.code });
+        if (action === 'next_round') socket.emit('game:next_round', { roomCode: room.code });
+        if (action === 'play_again') socket.emit('game:play_again', { roomCode: room.code });
+      }
+
+      return data;
+    } catch {
+      return { success: false, error: 'Şəbəkə xətası' };
+    }
+  },
+
+  initSyncEngine: () => {
     const socket = getSocket();
 
-    const onConnect = () => set({ isConnected: true });
-    const onDisconnect = () => set({ isConnected: false });
+    const onConnect = () => set({ isConnected: true, isPolling: false });
+    const onDisconnect = () => set({ isConnected: false, isPolling: true });
 
     const onRoomSync = (syncedRoom: Room) => {
-      const prevRoom = get().room;
+      const prev = get().room;
       set({ room: syncedRoom });
 
-      // Audio cues based on state transition
-      if (prevRoom) {
-        if (prevRoom.status !== 'COUNTDOWN' && syncedRoom.status === 'COUNTDOWN') {
+      if (prev) {
+        if (prev.status !== 'COUNTDOWN' && syncedRoom.status === 'COUNTDOWN') {
           soundManager.playCountdownBeep(false);
-        } else if (prevRoom.status !== 'REVIEW' && syncedRoom.status === 'REVIEW') {
+        } else if (prev.status !== 'REVIEW' && syncedRoom.status === 'REVIEW') {
           soundManager.playRoundComplete();
-        } else if (prevRoom.status !== 'FINISHED' && syncedRoom.status === 'FINISHED') {
+        } else if (prev.status !== 'FINISHED' && syncedRoom.status === 'FINISHED') {
           soundManager.playVictoryFanfare();
         }
       }
@@ -151,9 +275,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         if (!state.room) return state;
         return { room: { ...state.room, roundTimeRemaining: timeRemaining } };
       });
-      if (timeRemaining <= 10 && timeRemaining > 0) {
-        soundManager.playTick();
-      }
+      if (timeRemaining <= 10 && timeRemaining > 0) soundManager.playTick();
     };
 
     const onGraceTick = (graceRemaining: number) => {
@@ -184,14 +306,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const onRoundEnded = () => {
       soundManager.playRoundComplete();
-      // Auto-submit remaining local answers when round ends
       const { room, playerId, localAnswers } = get();
       if (room && playerId) {
-        socket.emit('game:answers_submit', {
-          roomCode: room.code,
-          playerId,
-          answers: localAnswers,
-        });
+        get().sendGameAction('submit_answers', { answers: localAnswers });
       }
     };
 
@@ -209,11 +326,55 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     socket.on('game:round_ended', onRoundEnded);
     socket.on('notification', onNotification);
 
-    if (socket.connected) {
-      set({ isConnected: true });
-    }
+    if (socket.connected) set({ isConnected: true });
+
+    // Adaptive polling loop for serverless synchronization
+    let isMounted = true;
+    const pollLoop = async () => {
+      while (isMounted) {
+        const { room, isConnected } = get();
+        // If room is open and either socket is not connected OR we are syncing state
+        if (room?.code) {
+          try {
+            const res = await fetch(`/api/room/${room.code}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.room) {
+                const prev = get().room;
+                set({ room: data.room });
+
+                // Audio cue transitions
+                if (prev && prev.status !== data.room.status) {
+                  if (data.room.status === 'COUNTDOWN') soundManager.playCountdownBeep(false);
+                  if (data.room.status === 'REVIEW') soundManager.playRoundComplete();
+                  if (data.room.status === 'FINISHED') soundManager.playVictoryFanfare();
+                }
+
+                // If STOP just got triggered during polling
+                if (data.room.stoppedBy && !prev?.stoppedBy) {
+                  soundManager.playStopBuzzer();
+                  get().setNotification({
+                    type: 'warning',
+                    message: `🚨 ${data.room.stoppedBy.name} STOP basdı!`,
+                  });
+                }
+              }
+            }
+          } catch {
+            // Ignore temporary network errors
+          }
+        }
+
+        // Interval timing: 1000ms during active playing, 1800ms otherwise
+        const interval = get().room?.status === 'PLAYING' ? 1000 : 1800;
+        await new Promise((r) => setTimeout(r, interval));
+      }
+    };
+
+    pollLoop();
 
     return () => {
+      isMounted = false;
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('room:sync', onRoomSync);

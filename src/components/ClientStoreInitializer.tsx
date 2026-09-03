@@ -5,13 +5,13 @@ import { useGameStore } from '@/lib/store';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 export default function ClientStoreInitializer() {
-  const { initPlayer, initSocketListeners, notification, setNotification } = useGameStore();
+  const { initPlayer, initSyncEngine, notification, setNotification } = useGameStore();
 
   useEffect(() => {
     initPlayer();
-    const cleanup = initSocketListeners();
+    const cleanup = initSyncEngine();
     return cleanup;
-  }, [initPlayer, initSocketListeners]);
+  }, [initPlayer, initSyncEngine]);
 
   return (
     <>

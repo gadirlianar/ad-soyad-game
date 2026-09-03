@@ -1,5 +1,5 @@
 // Web Audio API sound synthesizer
-// Requires zero external mp3 files and provides instant, zero-latency feedback
+// Linear/Raycast inspired tactile audio feedback (zero external mp3 assets)
 
 class SoundEffectsManager {
   private ctx: AudioContext | null = null;
@@ -15,7 +15,9 @@ class SoundEffectsManager {
   private initContext() {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
@@ -38,6 +40,29 @@ class SoundEffectsManager {
     return this.isMuted;
   }
 
+  // Subtle mechanical tactile click on input focus
+  public playFocusClick() {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.03);
+
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.03);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.03);
+  }
+
   // 3-2-1 Countdown Beep
   public playCountdownBeep(isFinal: boolean = false) {
     if (this.isMuted) return;
@@ -48,16 +73,16 @@ class SoundEffectsManager {
     const gain = ctx.createGain();
 
     osc.type = isFinal ? 'triangle' : 'sine';
-    osc.frequency.setValueAtTime(isFinal ? 880 : 440, ctx.currentTime); // A5 for GO, A4 for 3,2,1
+    osc.frequency.setValueAtTime(isFinal ? 880 : 440, ctx.currentTime);
 
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isFinal ? 0.4 : 0.2));
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isFinal ? 0.35 : 0.18));
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + (isFinal ? 0.4 : 0.2));
+    osc.stop(ctx.currentTime + (isFinal ? 0.35 : 0.18));
   }
 
   // Last 10s Ticking
@@ -72,43 +97,60 @@ class SoundEffectsManager {
     osc.type = 'square';
     osc.frequency.setValueAtTime(1200, ctx.currentTime);
 
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.05);
+    osc.stop(ctx.currentTime + 0.04);
   }
 
-  // STOP Button Smashing Buzzer
+  // Deep Bass Drop + Siren for "STOP" Button
   public playStopBuzzer() {
     if (this.isMuted) return;
     const ctx = this.initContext();
     if (!ctx) return;
 
     const now = ctx.currentTime;
-    // Two-tone warning siren
-    [320, 240, 320, 240].forEach((freq, i) => {
+
+    // Sub-bass impact drop
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(140, now);
+    subOsc.frequency.exponentialRampToValueAtTime(35, now + 0.4);
+
+    subGain.gain.setValueAtTime(0.3, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    subOsc.connect(subGain);
+    subGain.connect(ctx.destination);
+
+    subOsc.start(now);
+    subOsc.stop(now + 0.45);
+
+    // Urgent two-tone alarm
+    [360, 280, 360, 280].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      osc.frequency.setValueAtTime(freq, now + 0.1 + i * 0.1);
 
-      gain.gain.setValueAtTime(0.18, now + i * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + (i + 1) * 0.12);
+      gain.gain.setValueAtTime(0.12, now + 0.1 + i * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1 + (i + 1) * 0.1);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(now + i * 0.12);
-      osc.stop(now + (i + 1) * 0.12);
+      osc.start(now + 0.1 + i * 0.1);
+      osc.stop(now + 0.1 + (i + 1) * 0.1);
     });
   }
 
-  // Upvote / Downvote click
+  // Vote click
   public playVoteClick(approved: boolean) {
     if (this.isMuted) return;
     const ctx = this.initContext();
@@ -119,19 +161,19 @@ class SoundEffectsManager {
 
     osc.type = 'sine';
     const startFreq = approved ? 500 : 250;
-    const endFreq = approved ? 800 : 180;
+    const endFreq = approved ? 850 : 160;
 
     osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + 0.08);
 
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.1);
+    osc.stop(ctx.currentTime + 0.08);
   }
 
   // Round Complete Pleasant Chime
@@ -146,16 +188,16 @@ class SoundEffectsManager {
       const gain = ctx.createGain();
 
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.1);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
 
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.1 + 0.35);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.3);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(ctx.currentTime + idx * 0.1);
-      osc.stop(ctx.currentTime + idx * 0.1 + 0.35);
+      osc.start(ctx.currentTime + idx * 0.08);
+      osc.stop(ctx.currentTime + idx * 0.08 + 0.3);
     });
   }
 
@@ -165,18 +207,17 @@ class SoundEffectsManager {
     const ctx = this.initContext();
     if (!ctx) return;
 
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      const startTime = ctx.currentTime + idx * 0.15;
-      const duration = idx === notes.length - 1 ? 0.8 : 0.25;
+      const startTime = ctx.currentTime + idx * 0.12;
+      const duration = idx === notes.length - 1 ? 0.7 : 0.2;
 
       osc.frequency.setValueAtTime(freq, startTime);
-
-      gain.gain.setValueAtTime(0.2, startTime);
+      gain.gain.setValueAtTime(0.18, startTime);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
       osc.connect(gain);
